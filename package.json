@@ -7,7 +7,10 @@
     "preview": "vite preview --port 4173"
   },
   "dependencies": {
+    "@tinymce/tinymce-vue": "^6.3.0",
     "element-plus": "^2.4.4",
+    "pinia": "^2.0.33",
+    "tinymce": "^8.2.0",
     "vue": "^3.2.38",
     "vue-router": "^4.5.1"
   },

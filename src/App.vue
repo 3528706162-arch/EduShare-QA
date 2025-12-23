@@ -1,102 +1,108 @@
-<!-- 定义JS,控制模板部分的数据和行为 -->
+<template>
+  <div id="app">
+    <!-- 根据路由元信息决定是否显示布局 -->
+    <AppLayout v-if="!$route.meta.hideLayout">
+      <router-view />
+    </AppLayout>
+    <router-view v-else />
+  </div>
+</template>
+
 <script setup>
 import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import AppLayout from '@/components/layout/AppLayout.vue'
 
-const router = useRouter()
+const authStore = useAuthStore()
 
-// 全局HTTP拦截器
-const setupHttpInterceptor = () => {
-  const originalFetch = window.fetch
-  
-  window.fetch = async function(...args) {
-    try {
-      const token = localStorage.getItem('token')
-      const options = args[1] || {}
-      
-      // 添加认证头
-      if (token) {
-        options.headers = {
-          ...options.headers,
-          'token': token
-        }
-      }
-      
-      const response = await originalFetch(args[0], options)
-      
-      // 处理401未授权错误
-      if (response.status === 401) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('userInfo')
-        
-        // 显示提示信息
-        if (typeof ElMessage !== 'undefined') {
-          ElMessage.error('用户未登录！')
-        }
-        
-        // 跳转到登录页
-        if (router.currentRoute.value.path !== '/login') {
-          router.push('/login')
-        }
-        
-        throw new Error('用户未登录')
-      }
-      
-      return response
-    } catch (error) {
-      throw error
-    }
-  }
-}
-
-// 获取用户信息
-const fetchUserInfo = async () => {
-  const token = localStorage.getItem('token')
-  const username = localStorage.getItem('username')
-  if (!token) return
-  
-  try {
-    // 使用用户名作为路径参数
-    const apiUrl = username ? `/api/user/${username}` : '/api/user'
-    const response = await fetch(apiUrl, {
-      headers: {
-        'token': token
-      }
-    })
-    
-    if (response.ok) {
-      const result = await response.json()
-      // 处理后端返回的数据结构：{code, msg, data}
-      if (result.code === 1 && result.data) {
-        localStorage.setItem('userInfo', JSON.stringify(result.data))
-      }
-    }
-  } catch (error) {
-    console.error('获取用户信息失败:', error)
-  }
-}
-
+// 应用启动时检查登录状态
 onMounted(() => {
-  setupHttpInterceptor()
-  fetchUserInfo()
+  authStore.checkAuthStatus()
 })
 </script>
 
-<!-- 模板部分,控制的是页面的结构(HTML) -->
-<template>
-  <router-view></router-view>
-</template>
-
-<!-- 当前组件的CSS样式 -->
 <style>
-* {
+#app {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
   margin: 0;
   padding: 0;
+}
+
+* {
   box-sizing: border-box;
 }
 
-html, body, #app {
-  height: 100%;
+body {
   margin: 0;
+  padding: 0;
+  background-color: #f5f7fa;
 }
+
+/* 全局滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 全局动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* 全局工具类 */
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mt-4 { margin-top: 16px; }
+.mt-5 { margin-top: 20px; }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 4px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-5 { margin-bottom: 20px; }
+
+.p-0 { padding: 0; }
+.p-1 { padding: 4px; }
+.p-2 { padding: 8px; }
+.p-3 { padding: 12px; }
+.p-4 { padding: 16px; }
+.p-5 { padding: 20px; }
 </style>
