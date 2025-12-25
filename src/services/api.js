@@ -1,6 +1,6 @@
 // API服务模块 - 统一管理所有HTTP请求
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 class ApiService {
   constructor() {
@@ -133,11 +133,11 @@ class ApiService {
 
   // 课程相关API
   courses = {
-    list: () => this.request('/courses'),
+    list: () => this.request('/api/v1/class/findall'),
     
     get: (id) => this.request(`/courses/${id}`),
     
-    create: (courseData) => this.request('/courses', {
+    create: (courseData) => this.request('/api/v1/class/add', {
       method: 'POST',
       body: JSON.stringify(courseData)
     }),
@@ -154,21 +154,21 @@ class ApiService {
 
   // 教师相关API
   teachers = {
-    list: () => this.request('/teachers'),
+    list: () => this.request('/api/v1/teacher/findall'),
     
-    get: (id) => this.request(`/teachers/${id}`),
+    get: (id) => this.request(`/api/v1/teacher/${id}`),
     
-    create: (teacherData) => this.request('/teachers', {
+    create: (teacherData) => this.request('/api/v1/teacher/add', {
       method: 'POST',
       body: JSON.stringify(teacherData)
     }),
     
-    update: (id, teacherData) => this.request(`/teachers/${id}`, {
+    update: (id, teacherData) => this.request(`/api/v1/teacher/${id}`, {
       method: 'PUT',
       body: JSON.stringify(teacherData)
     }),
     
-    delete: (id) => this.request(`/teachers/${id}`, {
+    delete: (id) => this.request(`/api/v1/teacher/${id}`, {
       method: 'DELETE'
     })
   }

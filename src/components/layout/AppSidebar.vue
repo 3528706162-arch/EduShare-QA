@@ -20,33 +20,59 @@
       <!-- 快捷操作 -->
       <div class="quick-actions" v-if="user">
         <div class="section-title">快捷操作</div>
-        <el-button 
-          v-if="user.role === 'student'" 
-          type="primary" 
-          @click="$router.push('/resources/upload')"
-          class="quick-action-btn"
-        >
-          <el-icon><Upload /></el-icon>
-          上传资源
-        </el-button>
-        <el-button 
-          v-if="user.role === 'student'" 
-          type="success" 
-          @click="$router.push('/questions/ask')"
-          class="quick-action-btn"
-        >
-          <el-icon><Question /></el-icon>
-          提问
-        </el-button>
-        <el-button 
-          v-if="user.role === 'teacher'" 
-          type="warning" 
-          @click="handleAnswerQuestions"
-          class="quick-action-btn"
-        >
-          <el-icon><ChatDotRound /></el-icon>
-          回答问题
-        </el-button>
+        <!-- 管理员快捷操作 -->
+        <div v-if="user.role === 'admin'" class="admin-actions">
+          <el-button type="primary" @click="navigateTo('CourseManagement')" class="quick-action-btn">
+            <el-icon><Collection /></el-icon>
+            课程管理
+          </el-button>
+          
+          <el-button type="success" @click="navigateTo('TeacherManagement')" class="quick-action-btn">
+            <el-icon><UserFilled /></el-icon>
+            教师管理
+          </el-button>
+          
+          <el-button type="warning" @click="navigateTo('ResourceManagement')" class="quick-action-btn">
+            <el-icon><Document /></el-icon>
+            学习资源管理
+          </el-button>
+          
+          <el-button type="danger" @click="navigateTo('QuestionManagement')" class="quick-action-btn">
+            <el-icon><QuestionFilled /></el-icon>
+            问答内容管理
+          </el-button>
+        </div>
+        
+        <!-- 学生和教师快捷操作 -->
+        <div v-else>
+          <el-button 
+            v-if="user.role === 'student'" 
+            type="primary" 
+            @click="$router.push('/resources/upload')"
+            class="quick-action-btn"
+          >
+            <el-icon><Upload /></el-icon>
+            上传资源
+          </el-button>
+          <el-button 
+            v-if="user.role === 'student'" 
+            type="success" 
+            @click="$router.push('/questions/ask')"
+            class="quick-action-btn"
+          >
+            <el-icon><Question /></el-icon>
+            提问
+          </el-button>
+          <el-button 
+            v-if="user.role === 'teacher'" 
+            type="warning" 
+            @click="handleAnswerQuestions"
+            class="quick-action-btn"
+          >
+            <el-icon><ChatDotRound /></el-icon>
+            回答问题
+          </el-button>
+        </div>
       </div>
 
       <!-- 统计信息 -->
@@ -117,7 +143,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Upload, QuestionFilled, ChatDotRound, Document } from '@element-plus/icons-vue'
+import { Upload, QuestionFilled, ChatDotRound, Document, Collection, UserFilled } from '@element-plus/icons-vue'
 import { formatDateTime } from '@/utils/helpers'
 
 const router = useRouter()
@@ -172,6 +198,11 @@ const handleActivityClick = (activity) => {
 // 处理回答问题
 const handleAnswerQuestions = () => {
   router.push('/questions?filter=unanswered')
+}
+
+// 导航到管理页面
+const navigateTo = (routeName) => {
+  router.push({ name: routeName })
 }
 
 // 获取统计数据
@@ -287,10 +318,18 @@ onMounted(() => {
   width: 100%;
   margin-bottom: 10px;
   justify-content: flex-start;
+  font-weight: bold;
 }
 
 .quick-action-btn .el-icon {
   margin-right: 8px;
+}
+
+/* 管理员快捷操作样式 */
+.admin-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .stats-section {

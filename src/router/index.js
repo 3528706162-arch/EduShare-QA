@@ -187,6 +187,30 @@ const routes = [
       showBreadcrumb: true
     }
   },
+  {
+    path: '/admin/courses',
+    name: 'CourseManagement',
+    component: () => import('@/views/admin/CourseManagement.vue'),
+    meta: { 
+      title: '课程管理', 
+      requiresAuth: true, 
+      roles: ['admin'],
+      showSidebar: true,
+      showBreadcrumb: true
+    }
+  },
+  {
+    path: '/admin/teachers',
+    name: 'TeacherManagement',
+    component: () => import('@/views/admin/TeacherManagement.vue'),
+    meta: { 
+      title: '教师管理', 
+      requiresAuth: true, 
+      roles: ['admin'],
+      showSidebar: true,
+      showBreadcrumb: true
+    }
+  },
   // 404页面
   {
     path: '/:pathMatch(.*)*',

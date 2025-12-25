@@ -75,35 +75,6 @@
       </el-card>
     </div>
 
-    <!-- 图表区域 -->
-    <div class="charts-grid">
-      <el-card class="chart-card">
-        <template #header>
-          <h3>用户增长趋势</h3>
-        </template>
-        <div class="chart-container">
-          <div class="chart-placeholder">
-            <el-icon><TrendCharts /></el-icon>
-            <p>用户增长趋势图表</p>
-            <small>（图表组件待集成）</small>
-          </div>
-        </div>
-      </el-card>
-
-      <el-card class="chart-card">
-        <template #header>
-          <h3>内容分布</h3>
-        </template>
-        <div class="chart-container">
-          <div class="chart-placeholder">
-            <el-icon><PieChart /></el-icon>
-            <p>内容分布饼图</p>
-            <small>（图表组件待集成）</small>
-          </div>
-        </div>
-      </el-card>
-    </div>
-
     <!-- 快速操作 -->
     <div class="quick-actions">
       <el-card>
@@ -111,126 +82,25 @@
           <h3>快速操作</h3>
         </template>
         <div class="actions-grid">
-          <el-button 
-            type="primary" 
-            class="action-btn"
-            @click="navigateTo('UserManagement')"
-          >
-            <el-icon><User /></el-icon>
-            用户管理
+          <el-button type="primary" @click="navigateTo('CourseManagement')" class="action-btn">
+            <el-icon><Collection /></el-icon>
+            课程管理
           </el-button>
           
-          <el-button 
-            type="success" 
-            class="action-btn"
-            @click="navigateTo('ResourceManagement')"
-          >
+          <el-button type="success" @click="navigateTo('TeacherManagement')" class="action-btn">
+            <el-icon><UserFilled /></el-icon>
+            教师管理
+          </el-button>
+          
+          <el-button type="warning" @click="navigateTo('ResourceManagement')" class="action-btn">
             <el-icon><Document /></el-icon>
-            资源管理
+            学习资源管理
           </el-button>
           
-          <el-button 
-            type="warning" 
-            class="action-btn"
-            @click="navigateTo('QuestionManagement')"
-          >
+          <el-button type="danger" @click="navigateTo('QuestionManagement')" class="action-btn">
             <el-icon><QuestionFilled /></el-icon>
-            问答管理
+            问答内容管理
           </el-button>
-          
-          <el-button 
-            type="info" 
-            class="action-btn"
-            @click="showSystemSettings"
-          >
-            <el-icon><Setting /></el-icon>
-            系统设置
-          </el-button>
-        </div>
-      </el-card>
-    </div>
-
-    <!-- 最近活动 -->
-    <div class="recent-activities">
-      <el-card>
-        <template #header>
-          <div class="activity-header">
-            <h3>最近活动</h3>
-            <el-button type="text" @click="refreshActivities">刷新</el-button>
-          </div>
-        </template>
-        
-        <div class="activity-list">
-          <div 
-            v-for="activity in recentActivities" 
-            :key="activity.id"
-            class="activity-item"
-          >
-            <div class="activity-icon">
-              <el-icon v-if="activity.type === 'user'"><User /></el-icon>
-              <el-icon v-if="activity.type === 'question'"><QuestionFilled /></el-icon>
-              <el-icon v-if="activity.type === 'resource'"><Document /></el-icon>
-              <el-icon v-if="activity.type === 'answer'"><ChatDotRound /></el-icon>
-            </div>
-            <div class="activity-content">
-              <p class="activity-title">{{ activity.title }}</p>
-              <span class="activity-time">{{ formatTime(activity.time) }}</span>
-            </div>
-            <div class="activity-action">
-              <el-button 
-                v-if="activity.action" 
-                size="small" 
-                @click="handleActivityAction(activity)"
-              >
-                {{ activity.action }}
-              </el-button>
-            </div>
-          </div>
-          
-          <div v-if="recentActivities.length === 0" class="no-activities">
-            <el-empty description="暂无活动记录" />
-          </div>
-        </div>
-      </el-card>
-    </div>
-
-    <!-- 系统状态 -->
-    <div class="system-status">
-      <el-card>
-        <template #header>
-          <h3>系统状态</h3>
-        </template>
-        
-        <div class="status-grid">
-          <div class="status-item">
-            <span class="status-label">服务器状态</span>
-            <el-tag type="success">正常运行</el-tag>
-          </div>
-          
-          <div class="status-item">
-            <span class="status-label">数据库连接</span>
-            <el-tag type="success">已连接</el-tag>
-          </div>
-          
-          <div class="status-item">
-            <span class="status-label">API服务</span>
-            <el-tag type="success">正常</el-tag>
-          </div>
-          
-          <div class="status-item">
-            <span class="status-label">文件存储</span>
-            <el-tag type="success">正常</el-tag>
-          </div>
-          
-          <div class="status-item">
-            <span class="status-label">系统版本</span>
-            <span class="status-value">v1.0.0</span>
-          </div>
-          
-          <div class="status-item">
-            <span class="status-label">运行时间</span>
-            <span class="status-value">15天2小时</span>
-          </div>
         </div>
       </el-card>
     </div>
@@ -241,8 +111,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
-  User, QuestionFilled, Document, ChatDotRound, 
-  Setting, TrendCharts, PieChart 
+  User, QuestionFilled, Document, ChatDotRound,
+  Collection, UserFilled
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -259,84 +129,9 @@ const stats = reactive({
   newAnswersToday: 45
 })
 
-// 最近活动
-const recentActivities = ref([
-  {
-    id: 1,
-    type: 'user',
-    title: '新用户 "张三" 注册了账户',
-    time: '2024-01-15T10:30:00Z',
-    action: '查看'
-  },
-  {
-    id: 2,
-    type: 'question',
-    title: '用户 "李四" 发布了新问题',
-    time: '2024-01-15T09:15:00Z',
-    action: '审核'
-  },
-  {
-    id: 3,
-    type: 'resource',
-    title: '教师 "王五" 上传了新资源',
-    time: '2024-01-15T08:45:00Z',
-    action: '审核'
-  },
-  {
-    id: 4,
-    type: 'answer',
-    title: '用户 "赵六" 回答了问题',
-    time: '2024-01-15T08:20:00Z',
-    action: '查看'
-  }
-])
-
-// 导航方法
+// 导航到管理页面
 const navigateTo = (routeName) => {
   router.push({ name: routeName })
-}
-
-const showSystemSettings = () => {
-  ElMessage.info('系统设置功能开发中...')
-}
-
-const refreshActivities = () => {
-  ElMessage.success('活动记录已刷新')
-}
-
-const handleActivityAction = (activity) => {
-  switch (activity.type) {
-    case 'user':
-      navigateTo('UserManagement')
-      break
-    case 'question':
-      navigateTo('QuestionManagement')
-      break
-    case 'resource':
-      navigateTo('ResourceManagement')
-      break
-    case 'answer':
-      navigateTo('QuestionManagement')
-      break
-  }
-}
-
-const formatTime = (time) => {
-  if (!time) return '未知'
-  const now = new Date()
-  const target = new Date(time)
-  const diff = now - target
-  
-  const minute = 60 * 1000
-  const hour = 60 * minute
-  const day = 24 * hour
-  
-  if (diff < minute) return '刚刚'
-  if (diff < hour) return Math.floor(diff / minute) + '分钟前'
-  if (diff < day) return Math.floor(diff / hour) + '小时前'
-  if (diff < 7 * day) return Math.floor(diff / day) + '天前'
-  
-  return target.toLocaleDateString('zh-CN')
 }
 
 // 模拟加载数据
@@ -399,38 +194,38 @@ onMounted(() => {
 .stat-content {
   display: flex;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .stat-icon {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 15px;
-  font-size: 24px;
 }
 
 .user-icon {
-  background-color: #e6f7ff;
-  color: #1890ff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .question-icon {
-  background-color: #f6ffed;
-  color: #52c41a;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
 
 .resource-icon {
-  background-color: #fff7e6;
-  color: #fa8c16;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
 }
 
 .answer-icon {
-  background-color: #f9f0ff;
-  color: #722ed1;
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.stat-icon .el-icon {
+  font-size: 24px;
+  color: white;
 }
 
 .stat-info {
@@ -438,16 +233,15 @@ onMounted(() => {
 }
 
 .stat-number {
-  font-size: 32px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: bold;
   color: #303133;
-  line-height: 1;
+  margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 14px;
   color: #909399;
-  margin-top: 4px;
 }
 
 .stat-trend {
@@ -455,36 +249,8 @@ onMounted(() => {
 }
 
 .trend-up {
-  color: #52c41a;
+  color: #67c23a;
   font-size: 12px;
-}
-
-.charts-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.chart-card {
-  min-height: 300px;
-}
-
-.chart-container {
-  height: 250px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chart-placeholder {
-  text-align: center;
-  color: #909399;
-}
-
-.chart-placeholder .el-icon {
-  font-size: 48px;
-  margin-bottom: 10px;
 }
 
 .quick-actions {
@@ -493,146 +259,37 @@ onMounted(() => {
 
 .actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
 }
 
 .action-btn {
-  height: 80px;
+  height: 100px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: 16px;
+  font-weight: bold;
 }
 
 .action-btn .el-icon {
-  font-size: 24px;
-  margin-bottom: 8px;
+  font-size: 32px;
+  margin-bottom: 10px;
 }
 
-.recent-activities {
-  margin-bottom: 30px;
-}
-
-.activity-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.activity-list {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.activity-item {
-  display: flex;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.activity-item:last-child {
-  border-bottom: none;
-}
-
-.activity-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 15px;
-  background-color: #f5f7fa;
-  color: #409eff;
-}
-
-.activity-content {
-  flex: 1;
-}
-
-.activity-title {
-  margin: 0;
-  font-size: 14px;
-  color: #303133;
-}
-
-.activity-time {
-  font-size: 12px;
-  color: #909399;
-}
-
-.activity-action {
-  margin-left: 15px;
-}
-
-.no-activities {
-  padding: 40px 0;
-}
-
-.system-status {
-  margin-bottom: 30px;
-}
-
-.status-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-}
-
-.status-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.status-item:last-child {
-  border-bottom: none;
-}
-
-.status-label {
-  font-weight: 500;
-  color: #606266;
-}
-
-.status-value {
-  color: #303133;
-}
-
+/* 响应式设计 */
 @media (max-width: 768px) {
   .admin-dashboard {
-    padding: 15px;
+    padding: 16px;
   }
   
   .stats-grid {
     grid-template-columns: 1fr;
   }
   
-  .charts-grid {
-    grid-template-columns: 1fr;
-  }
-  
   .actions-grid {
     grid-template-columns: 1fr;
-  }
-  
-  .status-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .activity-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
-  .activity-action {
-    margin-left: 0;
-    align-self: flex-end;
   }
 }
 </style>
