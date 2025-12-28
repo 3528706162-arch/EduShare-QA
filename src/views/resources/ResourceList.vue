@@ -105,7 +105,7 @@ const categories = computed(() => resourcesStore.categories)
 const total = computed(() => resourcesStore.total)
 
 const canUpload = computed(() => {
-  return authStore.userRole === 'teacher' || authStore.userRole === 'admin'
+  return authStore.userRole === 'teacher' || authStore.userRole === 'admin' || authStore.userRole === 'student'
 })
 
 const handleSearch = () => {

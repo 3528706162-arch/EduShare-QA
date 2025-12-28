@@ -42,13 +42,13 @@
           />
         </el-form-item>
 
-        <el-form-item label="资源分类" prop="category">
-          <el-select v-model="form.category" placeholder="请选择分类" style="width: 100%">
+        <el-form-item label="所属课程" prop="courseId">
+          <el-select v-model="form.courseId" placeholder="请选择课程" style="width: 100%">
             <el-option
-              v-for="category in categories"
-              :key="category.id"
-              :label="category.name"
-              :value="category.id"
+              v-for="course in courses"
+              :key="course.id"
+              :label="course.title"
+              :value="course.id"
             />
           </el-select>
         </el-form-item>
@@ -112,12 +112,20 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="访问权限" prop="accessLevel">
+        <el-form-item v-if="canSetAccessLevel" label="访问权限" prop="accessLevel">
           <el-radio-group v-model="form.accessLevel">
             <el-radio label="public">公开</el-radio>
             <el-radio label="private">仅自己可见</el-radio>
             <el-radio label="restricted">指定用户可见</el-radio>
           </el-radio-group>
+        </el-form-item>
+        <el-form-item v-else>
+          <el-alert
+            title="学生用户只能上传公开资源"
+            type="info"
+            :closable="false"
+            show-icon
+          />
         </el-form-item>
 
         <el-form-item>
@@ -133,13 +141,21 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useResourcesStore } from '@/stores/resources'
+import { useAuthStore } from '@/stores/auth'
+import apiService from '@/services/api'
 import { UploadFilled } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const resourcesStore = useResourcesStore()
+const authStore = useAuthStore()
+
+// 计算属性：判断用户是否有权限设置访问权限
+const canSetAccessLevel = computed(() => {
+  return authStore.userRole === 'teacher' || authStore.userRole === 'admin'
+})
 
 const uploadForm = ref()
 const upload = ref()
@@ -148,9 +164,10 @@ const InputRef = ref()
 const form = reactive({
   title: '',
   description: '',
-  category: '',
+  courseId: '',
   tags: [],
   file: null,
+  fileUrl: '',
   accessLevel: 'public'
 })
 
@@ -163,15 +180,15 @@ const rules = reactive({
     { required: true, message: '请输入资源描述', trigger: 'blur' },
     { min: 10, max: 500, message: '描述长度在 10 到 500 个字符', trigger: 'blur' }
   ],
-  category: [
-    { required: true, message: '请选择资源分类', trigger: 'change' }
+  courseId: [
+    { required: true, message: '请选择所属课程', trigger: 'change' }
   ],
   file: [
     { required: true, message: '请上传资源文件', trigger: 'change' }
   ]
 })
 
-const categories = ref([])
+const courses = ref([])
 const fileList = ref([])
 const inputVisible = ref(false)
 const inputValue = ref('')
@@ -179,7 +196,7 @@ const uploadProgress = ref(0)
 const uploadStatus = ref('')
 const submitting = ref(false)
 
-const uploadUrl = ref('/api/resources/upload')
+const uploadUrl = ref('/api/v1/Fileupload')
 const uploadHeaders = ref({
   Authorization: `Bearer ${localStorage.getItem('token')}`
 })
@@ -236,7 +253,14 @@ const beforeUpload = (file) => {
 const handleSuccess = (response, file) => {
   uploadProgress.value = 100
   uploadStatus.value = 'success'
-  ElMessage.success('文件上传成功!')
+  
+  // 后端返回标准格式：{success: boolean, data: url}
+  if (response && response.success && response.data) {
+    form.fileUrl = response.data // 保存云端文件URL
+    ElMessage.success('文件上传成功!')
+  } else {
+    ElMessage.error('文件上传失败: ' + (response?.message || '未获得文件URL'))
+  }
 }
 
 const handleError = (error, file) => {
@@ -263,16 +287,23 @@ const submitForm = async () => {
     
     submitting.value = true
     
-    // 先上传文件
+    // 先上传文件到阿里云OSS
     await upload.value.submit()
     
-    // 创建资源记录
+    // 检查是否已获得云端文件URL
+    if (!form.fileUrl) {
+      ElMessage.error('文件上传失败，请重新上传')
+      return
+    }
+    
+    // 创建资源记录，包含云端文件URL
     const resourceData = {
       title: form.title,
       description: form.description,
-      category: form.category,
+      courseId: form.courseId,
       tags: form.tags,
-      accessLevel: form.accessLevel
+      accessLevel: form.accessLevel,
+      fileUrl: form.fileUrl // 云端文件URL
     }
     
     const result = await resourcesStore.createResource(resourceData)
@@ -304,17 +335,21 @@ const goBack = () => {
   router.push('/resources')
 }
 
-const loadCategories = async () => {
+const loadCourses = async () => {
   try {
-    await resourcesStore.getCategories()
-    categories.value = resourcesStore.categories
+    const response = await apiService.courses.list()
+    if (response.success && response.data?.code === 1) {
+      courses.value = response.data.data
+    } else {
+      console.error('加载课程列表失败:', response.data?.msg)
+    }
   } catch (error) {
-    console.error('加载分类失败:', error)
+    console.error('加载课程列表失败:', error)
   }
 }
 
 onMounted(() => {
-  loadCategories()
+  loadCourses()
 })
 </script>
 

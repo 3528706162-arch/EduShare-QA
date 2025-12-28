@@ -64,7 +64,7 @@ const routes = [
     meta: { 
       title: '上传资源', 
       requiresAuth: true, 
-      roles: ['teacher', 'admin'],
+      roles: ['teacher', 'admin', 'student'],
       showSidebar: true,
       showBreadcrumb: true
     }

@@ -692,7 +692,6 @@ const loadResourceList = async () => {
     // 模拟API调用
     await new Promise(resolve => setTimeout(resolve, 500))
     pagination.total = resourceList.value.length
-    ElMessage.success('数据加载完成')
   } catch (error) {
     console.error('加载资源列表失败:', error)
     ElMessage.error('数据加载失败')

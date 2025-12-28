@@ -6,7 +6,7 @@ class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL
   }
-
+//666
   // 通用请求方法
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`
@@ -135,19 +135,23 @@ class ApiService {
   courses = {
     list: () => this.request('/api/v1/class/findall'),
     
-    get: (id) => this.request(`/courses/${id}`),
+    get: (id) => this.request(`/api/v1/class/${id}`),
     
     create: (courseData) => this.request('/api/v1/class/add', {
       method: 'POST',
       body: JSON.stringify(courseData)
     }),
     
-    update: (id, courseData) => this.request(`/courses/${id}`, {
+    update: (id, courseData) => this.request('/api/v1/class', {
       method: 'PUT',
-      body: JSON.stringify(courseData)
+      body: JSON.stringify({ id, ...courseData })
     }),
     
-    delete: (id) => this.request(`/courses/${id}`, {
+    delete: (id) => this.request(`/api/v1/class?ids=${id}`, {
+      method: 'DELETE'
+    }),
+    
+    deleteBatch: (ids) => this.request(`/api/v1/class?ids=${ids.join(',')}`, {
       method: 'DELETE'
     })
   }
@@ -163,12 +167,16 @@ class ApiService {
       body: JSON.stringify(teacherData)
     }),
     
-    update: (id, teacherData) => this.request(`/api/v1/teacher/${id}`, {
+    update: (id, teacherData) => this.request('/api/v1/teacher', {
       method: 'PUT',
-      body: JSON.stringify(teacherData)
+      body: JSON.stringify({ id, ...teacherData })
     }),
     
-    delete: (id) => this.request(`/api/v1/teacher/${id}`, {
+    delete: (id) => this.request(`/api/v1/teacher?ids=${id}`, {
+      method: 'DELETE'
+    }),
+    
+    deleteBatch: (ids) => this.request(`/api/v1/teacher?ids=${ids.join(',')}`, {
       method: 'DELETE'
     })
   }

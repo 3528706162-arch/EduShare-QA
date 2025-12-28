@@ -12,31 +12,21 @@
       <p>管理系统中的所有课程信息</p>
     </div>
 
-    <!-- 搜索和操作栏 -->
-    <el-card class="search-bar">
-      <div class="search-content">
-        <el-input
-          v-model="searchKeyword"
-          placeholder="搜索课程名称"
-          style="width: 300px"
-          clearable
-          @input="handleSearch"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-        
-        <div class="action-buttons">
-          <el-button type="primary" @click="showAddDialog = true">
-            <el-icon><Plus /></el-icon>
-            新增课程
-          </el-button>
-          <el-button @click="handleRefresh">
-            <el-icon><Refresh /></el-icon>
-            刷新
-          </el-button>
-        </div>
+    <!-- 操作栏 -->
+    <el-card class="action-bar">
+      <div class="action-buttons">
+        <el-button type="primary" @click="showAddDialog = true">
+          <el-icon><Plus /></el-icon>
+          新增课程
+        </el-button>
+        <el-button type="danger" @click="handleBatchDelete" :disabled="selectedCourses.length === 0">
+          <el-icon><Delete /></el-icon>
+          批量删除
+        </el-button>
+        <el-button @click="handleRefresh">
+          <el-icon><Refresh /></el-icon>
+          刷新
+        </el-button>
       </div>
     </el-card>
 
@@ -49,11 +39,16 @@
         </div>
       </template>
       
-      <el-table :data="courseList" style="width: 100%" v-loading="loading">
+      <el-table 
+        :data="courseList" 
+        style="width: 100%" 
+        v-loading="loading"
+        @selection-change="handleSelectionChange"
+      >
         <el-table-column type="selection" width="55" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="title" label="课程名称" min-width="200" />
-        <el-table-column prop="teacher" label="授课教师" min-width="120" />
+        <el-table-column prop="teacherName" label="授课教师" min-width="120" />
         <el-table-column prop="classType" label="课程类型" min-width="120" />
         <el-table-column prop="institute" label="学院" min-width="150" />
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
@@ -107,6 +102,17 @@
           </el-select>
         </el-form-item>
         
+        <el-form-item label="授课教师" prop="teacherId">
+          <el-select v-model="addForm.teacherId" placeholder="请选择授课教师" style="width: 100%">
+            <el-option 
+              v-for="teacher in teacherList" 
+              :key="teacher.id" 
+              :label="teacher.name" 
+              :value="teacher.id" 
+            />
+          </el-select>
+        </el-form-item>
+        
         <el-form-item label="学院" prop="institute">
           <el-input v-model="addForm.institute" placeholder="请输入学院名称" />
         </el-form-item>
@@ -130,31 +136,106 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 编辑课程对话框 -->
+    <el-dialog
+      v-model="showEditDialog"
+      title="编辑课程"
+      width="600px"
+      :before-close="handleCloseEditDialog"
+    >
+      <el-form
+        ref="editFormRef"
+        :model="editForm"
+        :rules="addFormRules"
+        label-width="100px"
+      >
+        <el-form-item label="课程名称" prop="title">
+          <el-input v-model="editForm.title" placeholder="请输入课程名称" />
+        </el-form-item>
+        
+        <el-form-item label="课程类型" prop="classType">
+          <el-select v-model="editForm.classType" placeholder="请选择课程类型" style="width: 100%">
+            <el-option label="计算机编程" value="计算机编程" />
+            <el-option label="数学计算" value="数学计算" />
+            <el-option label="电子科学" value="电子科学" />
+            <el-option label="通识培养" value="通识培养" />
+            <el-option label="政治素养" value="政治素养" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="授课教师" prop="teacherId">
+          <el-select v-model="editForm.teacherId" placeholder="请选择授课教师" style="width: 100%">
+            <el-option 
+              v-for="teacher in teacherList" 
+              :key="teacher.id" 
+              :label="teacher.name" 
+              :value="teacher.id" 
+            />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="学院" prop="institute">
+          <el-input v-model="editForm.institute" placeholder="请输入学院名称" />
+        </el-form-item>
+        
+        <el-form-item label="课程描述" prop="description">
+          <el-input
+            v-model="editForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入课程描述"
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="handleCloseEditDialog">取消</el-button>
+          <el-button type="primary" @click="handleEditSubmit" :loading="editLoading">
+            确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus, Refresh } from '@element-plus/icons-vue'
+import { Search, Plus, Refresh, Delete } from '@element-plus/icons-vue'
 import apiService from '@/services/api'
 
 // 响应式数据
 const loading = ref(false)
-const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const showAddDialog = ref(false)
+const showEditDialog = ref(false)
 const addLoading = ref(false)
+const editLoading = ref(false)
 const addFormRef = ref()
+const editFormRef = ref()
 
 // 新增课程表单数据
 const addForm = ref({
   title: '',
   classType: '',
   institute: '',
-  description: ''
+  description: '',
+  teacherId: ''
+})
+
+// 编辑课程表单数据
+const editForm = ref({
+  id: '',
+  title: '',
+  classType: '',
+  institute: '',
+  description: '',
+  teacherId: ''
 })
 
 // 表单验证规则
@@ -165,6 +246,9 @@ const addFormRules = ref({
   ],
   classType: [
     { required: true, message: '请选择课程类型', trigger: 'change' }
+  ],
+  teacherId: [
+    { required: true, message: '请选择授课教师', trigger: 'change' }
   ],
   institute: [
     { required: true, message: '请输入学院名称', trigger: 'blur' },
@@ -178,22 +262,17 @@ const addFormRules = ref({
 
 // 课程列表数据
 const courseList = ref([])
+// 选中的课程
+const selectedCourses = ref([])
+// 教师列表数据（用于下拉选择）
+const teacherList = ref([])
 
 // 计算属性
 const filteredCourses = computed(() => {
-  if (!searchKeyword.value) {
-    return courseList.value
-  }
-  return courseList.value.filter(course =>
-    course.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-    course.institute.toLowerCase().includes(searchKeyword.value.toLowerCase())
-  )
+  return courseList.value
 })
 
 // 方法
-const handleSearch = () => {
-  currentPage.value = 1
-}
 
 const handleSizeChange = (size) => {
   pageSize.value = size
@@ -212,24 +291,104 @@ const refreshData = () => {
   loadCourseData()
 }
 
-const handleEdit = (row) => {
-  ElMessage.info('编辑功能暂未实现')
+const handleEdit = async (row) => {
+  try {
+    // 获取课程详情
+    const response = await apiService.courses.get(row.id)
+    
+    if (response.success && response.data?.code === 1) {
+      const courseData = response.data.data
+      
+      // 填充编辑表单数据
+      editForm.value = {
+        id: courseData.id,
+        title: courseData.title,
+        classType: courseData.classType,
+        institute: courseData.institute,
+        description: courseData.description,
+        teacherId: '' // 需要根据教师名字找到对应的ID
+      }
+      
+      // 根据教师名字找到对应的教师ID
+      if (courseData.teacherName) {
+        const teacher = teacherList.value.find(t => t.name === courseData.teacherName)
+        if (teacher) {
+          editForm.value.teacherId = teacher.id
+        }
+      }
+      
+      showEditDialog.value = true
+    } else {
+      ElMessage.error(response.data?.msg || '获取课程详情失败')
+    }
+  } catch (error) {
+    ElMessage.error('网络错误，请重试')
+  }
 }
 
-const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除课程"${row.title}"吗？`,
-    '删除确认',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除课程"${row.title}"吗？`,
+      '删除确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    const response = await apiService.courses.delete(row.id)
+    
+    if (response.success && response.data?.code === 1) {
+      ElMessage.success('课程删除成功')
+      loadCourseData() // 刷新列表
+    } else {
+      ElMessage.error(response.data?.msg || '课程删除失败')
     }
-  ).then(() => {
-    ElMessage.info('删除功能暂未实现')
-  }).catch(() => {
-    // 用户取消操作
-  })
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('网络错误，请重试')
+    }
+  }
+}
+
+const handleBatchDelete = async () => {
+  if (selectedCourses.value.length === 0) {
+    ElMessage.warning('请选择要删除的课程')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedCourses.value.length} 门课程吗？`,
+      '批量删除确认',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    const ids = selectedCourses.value.map(course => course.id)
+    const response = await apiService.courses.deleteBatch(ids)
+    
+    if (response.success && response.data?.code === 1) {
+      ElMessage.success(`成功删除 ${selectedCourses.value.length} 门课程`)
+      selectedCourses.value = [] // 清空选择
+      loadCourseData() // 刷新列表
+    } else {
+      ElMessage.error(response.data?.msg || '批量删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('网络错误，请重试')
+    }
+  }
+}
+
+const handleSelectionChange = (selection) => {
+  selectedCourses.value = selection
 }
 
 const handleCloseDialog = () => {
@@ -239,7 +398,21 @@ const handleCloseDialog = () => {
     title: '',
     classType: '',
     institute: '',
-    description: ''
+    description: '',
+    teacherId: ''
+  }
+}
+
+const handleCloseEditDialog = () => {
+  showEditDialog.value = false
+  editFormRef.value?.resetFields()
+  editForm.value = {
+    id: '',
+    title: '',
+    classType: '',
+    institute: '',
+    description: '',
+    teacherId: ''
   }
 }
 
@@ -251,10 +424,15 @@ const handleAddSubmit = async () => {
   
   addLoading.value = true
   try {
+    // 获取选中的教师名字
+    const selectedTeacher = teacherList.value.find(teacher => teacher.id === addForm.value.teacherId)
+    const teacherName = selectedTeacher ? selectedTeacher.name : ''
+    
     const response = await apiService.courses.create({
       title: addForm.value.title,
       classType: addForm.value.classType,
       institute: addForm.value.institute,
+      teacherName: teacherName,
       description: addForm.value.description,
       createdAt: '',
       updatedAt: ''
@@ -274,6 +452,55 @@ const handleAddSubmit = async () => {
   }
 }
 
+const handleEditSubmit = async () => {
+  if (!editFormRef.value) return
+  
+  const valid = await editFormRef.value.validate()
+  if (!valid) return
+  
+  editLoading.value = true
+  try {
+    // 获取选中的教师名字
+    const selectedTeacher = teacherList.value.find(teacher => teacher.id === editForm.value.teacherId)
+    const teacherName = selectedTeacher ? selectedTeacher.name : ''
+    
+    const response = await apiService.courses.update(editForm.value.id, {
+      title: editForm.value.title,
+      classType: editForm.value.classType,
+      institute: editForm.value.institute,
+      teacherName: teacherName,
+      description: editForm.value.description
+    })
+    
+    if (response.success && response.data?.code === 1) {
+      ElMessage.success('课程更新成功')
+      handleCloseEditDialog()
+      loadCourseData() // 刷新列表
+    } else {
+      ElMessage.error(response.data?.msg || '课程更新失败')
+    }
+  } catch (error) {
+    ElMessage.error('网络错误，请重试')
+  } finally {
+    editLoading.value = false
+  }
+}
+
+// 加载教师数据
+const loadTeacherData = async () => {
+  try {
+    const response = await apiService.teachers.list()
+    if (response.success && response.data?.code === 1) {
+      teacherList.value = response.data.data || []
+    } else {
+      ElMessage.error(response.data?.msg || '获取教师列表失败')
+    }
+  } catch (error) {
+    ElMessage.error('网络错误，请稍后重试')
+    console.error('加载教师数据失败:', error)
+  }
+}
+
 // 加载课程数据
 const loadCourseData = async () => {
   loading.value = true
@@ -287,7 +514,6 @@ const loadCourseData = async () => {
         teacher: '' // 暂时为空，后续可以关联教师数据
       }))
       total.value = courseList.value.length
-      ElMessage.success('数据加载成功')
     } else {
       ElMessage.error(response.data?.msg || '数据加载失败')
     }
@@ -301,6 +527,7 @@ const loadCourseData = async () => {
 // 生命周期
 onMounted(() => {
   loadCourseData()
+  loadTeacherData()
 })
 </script>
 
@@ -340,9 +567,14 @@ onMounted(() => {
   align-items: center;
 }
 
+.action-bar {
+  margin-bottom: 20px;
+}
+
 .action-buttons {
   display: flex;
   gap: 10px;
+  padding: 8px 15px;
 }
 
 .table-header {
