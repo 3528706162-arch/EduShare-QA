@@ -59,7 +59,7 @@
           <div class="feature-icon">
             <el-icon><Reading /></el-icon>
           </div>
-          <h3>课程管理</h3>
+          <h3>课程中心</h3>
           <p>教师发布课程资料，学生选课学习，支持课程讨论和作业提交</p>
           <div class="feature-stats">
             <span>课程数量：{{ courseStats.total || '加载中...' }}</span>

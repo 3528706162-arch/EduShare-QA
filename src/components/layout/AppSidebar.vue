@@ -140,7 +140,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Upload, QuestionFilled, ChatDotRound, Document, Collection, UserFilled } from '@element-plus/icons-vue'
@@ -207,12 +207,48 @@ const navigateTo = (routeName) => {
 
 // 获取统计数据
 const fetchStats = async () => {
-  // 模拟API调用
-  stats.value = {
-    uploadedResources: 12,
-    askedQuestions: 8,
-    answeredQuestions: 23,
-    points: 156
+  try {
+    if (!authStore.isAuthenticated || !authStore.user?.username) {
+      console.warn('用户未登录或用户名不存在，使用默认统计数据')
+      stats.value = {
+        uploadedResources: 0,
+        askedQuestions: 8,
+        answeredQuestions: 23,
+        points: 156
+      }
+      return
+    }
+
+    // 调用后端API获取用户上传资源数量
+    const response = await fetch(`/api/v1/resource/findUploadCount/${authStore.user.username}`)
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    
+    const result = await response.json()
+    
+    if (result.code === 1) {
+      // 使用真实的上传资源数量，其他统计数据保持模拟
+      stats.value = {
+        uploadedResources: result.data,
+        askedQuestions: 8,
+        answeredQuestions: 23,
+        points: 156
+      }
+      console.log('成功获取用户上传资源数量:', result.data)
+    } else {
+      throw new Error(`API返回错误: ${result.msg}`)
+    }
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+    // 失败时使用默认值
+    stats.value = {
+      uploadedResources: 0,
+      askedQuestions: 8,
+      answeredQuestions: 23,
+      points: 156
+    }
   }
 }
 
@@ -255,12 +291,45 @@ const fetchRecentActivities = async () => {
 }
 
 onMounted(() => {
-  if (authStore.isLoggedIn) {
+  console.log('AppSidebar组件已挂载，用户状态:', {
+    isAuthenticated: authStore.isAuthenticated,
+    user: authStore.user,
+    username: authStore.user?.username
+  })
+  
+  if (authStore.isAuthenticated) {
+    console.log('用户已登录，开始获取统计数据')
     fetchStats()
     fetchHotTags()
     fetchRecentActivities()
+  } else {
+    console.log('用户未登录，跳过统计数据获取')
   }
 })
+
+// 监听用户登录状态变化
+watch(() => authStore.isAuthenticated, (newVal, oldVal) => {
+  console.log('用户登录状态变化:', { oldVal, newVal, user: authStore.user })
+  
+  if (newVal && !oldVal) {
+    // 用户从未登录变为登录状态
+    console.log('用户已登录，开始获取统计数据')
+    fetchStats()
+    fetchHotTags()
+    fetchRecentActivities()
+  } else if (!newVal && oldVal) {
+    // 用户从登录变为未登录状态
+    console.log('用户已退出登录，清空统计数据')
+    stats.value = {
+      uploadedResources: 0,
+      askedQuestions: 0,
+      answeredQuestions: 0,
+      points: 0
+    }
+    hotTags.value = []
+    recentActivities.value = []
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

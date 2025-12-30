@@ -90,7 +90,7 @@
             :on-progress="handleProgress"
             :file-list="fileList"
             :limit="1"
-            :auto-upload="false"
+            :auto-upload="true"
           >
             <el-icon class="el-icon--upload"><upload-filled /></el-icon>
             <div class="el-upload__text">
@@ -109,6 +109,36 @@
               :status="uploadStatus"
               :stroke-width="8"
             />
+          </div>
+          
+          <!-- 图片预览区域 -->
+          <div v-if="showImagePreview" class="image-preview">
+            <div class="preview-header">
+              <span class="preview-title">图片预览</span>
+              <el-button 
+                type="danger" 
+                size="small" 
+                @click="showImagePreview = false"
+                :icon="Close"
+              >
+                关闭预览
+              </el-button>
+            </div>
+            <div class="preview-content">
+              <el-image 
+                :src="imagePreviewUrl" 
+                :preview-src-list="[imagePreviewUrl]"
+                fit="contain"
+                style="max-width: 100%; max-height: 300px;"
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon><Picture /></el-icon>
+                    <span>图片加载失败</span>
+                  </div>
+                </template>
+              </el-image>
+            </div>
           </div>
         </el-form-item>
 
@@ -146,7 +176,8 @@ import { useRouter } from 'vue-router'
 import { useResourcesStore } from '@/stores/resources'
 import { useAuthStore } from '@/stores/auth'
 import apiService from '@/services/api'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { UploadFilled, Close, Picture } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const resourcesStore = useResourcesStore()
@@ -195,6 +226,8 @@ const inputValue = ref('')
 const uploadProgress = ref(0)
 const uploadStatus = ref('')
 const submitting = ref(false)
+const showImagePreview = ref(false) // 控制图片预览显示
+const imagePreviewUrl = ref('') // 图片预览URL
 
 const uploadUrl = ref('/api/v1/Fileupload')
 const uploadHeaders = ref({
@@ -221,6 +254,10 @@ const handleInputConfirm = () => {
 }
 
 const beforeUpload = (file) => {
+  // 重置预览状态
+  showImagePreview.value = false
+  imagePreviewUrl.value = ''
+  
   const isLt100M = file.size / 1024 / 1024 < 100
   if (!isLt100M) {
     ElMessage.error('文件大小不能超过 100MB!')
@@ -254,12 +291,24 @@ const handleSuccess = (response, file) => {
   uploadProgress.value = 100
   uploadStatus.value = 'success'
   
-  // 后端返回标准格式：{success: boolean, data: url}
-  if (response && response.success && response.data) {
+  // 后端返回标准格式：{code: 1, msg: "success", data: url}
+  if (response && response.code === 1 && response.data) {
     form.fileUrl = response.data // 保存云端文件URL
-    ElMessage.success('文件上传成功!')
+    
+    // 检查是否为图片格式，如果是则显示预览
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+    const isImage = imageExtensions.some(ext => response.data.toLowerCase().includes(ext))
+    
+    if (isImage) {
+      showImagePreview.value = true
+      imagePreviewUrl.value = response.data
+      ElMessage.success('图片上传成功! 已显示预览')
+    } else {
+      showImagePreview.value = false
+      ElMessage.success('文件上传成功!')
+    }
   } else {
-    ElMessage.error('文件上传失败: ' + (response?.message || '未获得文件URL'))
+    ElMessage.error('文件上传失败: ' + (response?.msg || '未获得文件URL'))
   }
 }
 
@@ -287,30 +336,79 @@ const submitForm = async () => {
     
     submitting.value = true
     
-    // 先上传文件到阿里云OSS
-    await upload.value.submit()
-    
     // 检查是否已获得云端文件URL
     if (!form.fileUrl) {
       ElMessage.error('文件上传失败，请重新上传')
       return
     }
     
-    // 创建资源记录，包含云端文件URL
+    // 从文件URL中提取文件类型
+    const getFileTypeFromUrl = (url) => {
+      if (!url) return 'UNKNOWN'
+      const extension = url.split('.').pop().toLowerCase()
+      const typeMap = {
+        'pdf': 'PDF',
+        'doc': 'DOC',
+        'docx': 'DOC',
+        'ppt': 'PPT',
+        'pptx': 'PPT',
+        'xls': 'XLS',
+        'xlsx': 'XLS',
+        'txt': 'TEXT',
+        'jpg': 'IMAGE',
+        'jpeg': 'IMAGE',
+        'png': 'IMAGE',
+        'gif': 'IMAGE',
+        'mp4': 'VIDEO',
+        'avi': 'VIDEO',
+        'mov': 'VIDEO',
+        'mp3': 'AUDIO',
+        'wav': 'AUDIO',
+        'zip': 'ARCHIVE',
+        'rar': 'ARCHIVE',
+        '7z': 'ARCHIVE'
+      }
+      return typeMap[extension] || 'OTHER'
+    }
+
+    // 根据课程ID查找对应的课程名
+    const selectedCourse = courses.value.find(course => course.id === form.courseId)
+    const className = selectedCourse ? selectedCourse.title : '未知课程'
+    
+    console.log('选中的课程ID:', form.courseId)
+    console.log('所有课程列表:', courses.value)
+    console.log('找到的课程:', selectedCourse)
+    console.log('课程名:', className)
+    
+    // 创建资源记录，适配后端接口格式
     const resourceData = {
       title: form.title,
       description: form.description,
-      courseId: form.courseId,
-      tags: form.tags,
-      accessLevel: form.accessLevel,
-      fileUrl: form.fileUrl // 云端文件URL
+      fileUrl: form.fileUrl, // 使用后端要求的字段名
+      fileType: getFileTypeFromUrl(form.fileUrl), // 从URL后缀提取文件类型
+      uploaderName: authStore.userName || '未知用户', // 从用户信息获取
+      classBelong: className, // 使用课程名而不是ID
+      downloadCount: 0, // 默认下载次数
+      tags: form.tags.join(',') // 将标签数组转换为逗号分隔字符串
     }
     
+    console.log('发送给后端的数据:', resourceData)
+    
     const result = await resourcesStore.createResource(resourceData)
+    console.log('后端返回结果:', result)
+    console.log('result.success:', result.success)
+    console.log('result.error:', result.error)
+    
     if (result.success) {
+      console.log('进入成功分支')
       ElMessage.success('资源上传成功!')
-      router.push('/resources')
+      // 延迟1秒后跳转，让用户看到成功消息
+      setTimeout(() => {
+        console.log('执行跳转')
+        router.push('/resources')
+      }, 1000)
     } else {
+      console.log('进入失败分支')
       ElMessage.error('资源创建失败: ' + result.error)
     }
   } catch (error) {
@@ -329,6 +427,8 @@ const resetForm = () => {
   fileList.value = []
   uploadProgress.value = 0
   uploadStatus.value = ''
+  showImagePreview.value = false
+  imagePreviewUrl.value = ''
 }
 
 const goBack = () => {
@@ -441,5 +541,47 @@ onMounted(() => {
   :deep(.el-form-item__label) {
     font-size: 14px;
   }
+}
+
+/* 图片预览样式 */
+.image-preview {
+  margin-top: 16px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 16px;
+  background-color: #fafafa;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.preview-title {
+  font-weight: 600;
+  color: #303133;
+  font-size: 14px;
+}
+
+.preview-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.image-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #909399;
+  font-size: 14px;
+}
+
+.image-error .el-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
 }
 </style>

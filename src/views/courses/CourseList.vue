@@ -80,44 +80,11 @@
           :key="course.id"
           :xs="24" :sm="12" :md="8" :lg="6"
         >
-          <el-card class="course-card" shadow="hover">
-            <div class="course-cover">
-              <el-image 
-                :src="course.cover" 
-                fit="cover"
-                class="cover-image"
-              >
-                <template #error>
-                  <div class="cover-placeholder">
-                    <el-icon><VideoPlay /></el-icon>
-                    <p>课程封面</p>
-                  </div>
-                </template>
-              </el-image>
-              
-              <div class="course-status">
-                <el-tag 
-                  v-if="course.isFree" 
-                  type="success" 
-                  size="small"
-                >
-                  免费
-                </el-tag>
-                <el-tag 
-                  v-else 
-                  type="warning" 
-                  size="small"
-                >
-                  ￥{{ course.price }}
-                </el-tag>
-              </div>
-              
-              <div class="course-duration">
-                <el-icon><Clock /></el-icon>
-                {{ course.duration }}
-              </div>
-            </div>
-            
+          <el-card 
+            class="course-card"
+            shadow="hover"
+            :body-style="{ padding: '16px' }"
+          >
             <div class="course-content">
               <h3 class="course-title">{{ course.title }}</h3>
               <p class="course-description">{{ course.description }}</p>
@@ -129,19 +96,13 @@
                 </div>
                 
                 <div class="course-stats">
+                  <span class="college">
+                    <el-icon><School /></el-icon>
+                    {{ course.college }}
+                  </span>
                   <span class="students">
                     <el-icon><User /></el-icon>
                     {{ course.studentCount }}
-                  </span>
-                  <span class="rating">
-                    <el-rate
-                      v-model="course.rating"
-                      disabled
-                      show-score
-                      text-color="#ff9900"
-                      score-template="{value}"
-                      size="small"
-                    />
                   </span>
                 </div>
               </div>
@@ -166,20 +127,11 @@
                   查看详情
                 </el-button>
                 <el-button 
-                  v-if="course.isFree" 
                   type="success" 
-                  size="small"
-                  @click="enrollCourse(course)"
+                  size="small" 
+                  @click="askQuestion(course)"
                 >
-                  立即学习
-                </el-button>
-                <el-button 
-                  v-else 
-                  type="warning" 
-                  size="small"
-                  @click="purchaseCourse(course)"
-                >
-                  购买课程
+                  提出问题
                 </el-button>
               </div>
             </div>
@@ -215,8 +167,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import apiService from '@/services/api'
 import { 
-  Search, VideoPlay, Clock, User 
+  Search, VideoPlay, Clock, User, School 
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -256,65 +210,7 @@ const levels = ref([
 ])
 
 // 课程数据
-const courses = ref([
-  {
-    id: 1,
-    title: '高中数学函数专题精讲',
-    description: '深入讲解函数概念、性质和应用，帮助掌握函数核心知识点',
-    cover: '',
-    category: 'math',
-    level: 'advanced',
-    duration: '12小时',
-    isFree: false,
-    price: 99,
-    instructor: {
-      id: 1,
-      name: '张老师',
-      avatar: ''
-    },
-    studentCount: 256,
-    rating: 4.7,
-    tags: ['函数', '数学', '高中']
-  },
-  {
-    id: 2,
-    title: '英语四级词汇速记',
-    description: '高效记忆四级核心词汇，提升词汇量和应用能力',
-    cover: '',
-    category: 'english',
-    level: 'intermediate',
-    duration: '8小时',
-    isFree: true,
-    price: 0,
-    instructor: {
-      id: 2,
-      name: '李老师',
-      avatar: ''
-    },
-    studentCount: 189,
-    rating: 4.5,
-    tags: ['英语', '四级', '词汇']
-  },
-  {
-    id: 3,
-    title: '物理实验操作指南',
-    description: '详细演示高中物理重要实验操作步骤和注意事项',
-    cover: '',
-    category: 'physics',
-    level: 'beginner',
-    duration: '6小时',
-    isFree: true,
-    price: 0,
-    instructor: {
-      id: 3,
-      name: '王老师',
-      avatar: ''
-    },
-    studentCount: 134,
-    rating: 4.8,
-    tags: ['物理', '实验', '操作']
-  }
-])
+const courses = ref([])
 
 // 搜索处理
 const handleSearch = () => {
@@ -350,6 +246,97 @@ const viewCourse = (course) => {
   ElMessage.info(`查看课程: ${course.title}`)
 }
 
+// 提出问题
+const askQuestion = (course) => {
+  // 这里可以跳转到提问页面或打开提问对话框
+  ElMessage.info(`对课程"${course.title}"提出问题`)
+}
+
+// 加载课程数据
+const loadCourses = async () => {
+  try {
+    const response = await apiService.courses.list()
+    
+    if (response.success && response.data?.code === 1) {
+      // 转换后端数据格式为前端需要的格式
+      courses.value = response.data.data.map(course => ({
+        id: course.id,
+        title: course.title,
+        description: course.description || '暂无描述',
+        cover: course.cover || '',
+        category: course.classType || '其他',
+        level: 'intermediate', // 默认中级
+        duration: '6小时', // 默认时长
+        instructor: {
+          id: course.teacherId || 0,
+          name: course.teacherName || '未知教师',
+          avatar: ''
+        },
+        college: course.institute || '未知学院', // 修复：使用institute字段
+        studentCount: course.studentCount || 0,
+        rating: 4.5, // 默认评分
+        tags: course.tags ? course.tags.split(',') : ['课程']
+      }))
+      
+      pagination.total = courses.value.length
+      ElMessage.success(`成功加载 ${courses.value.length} 门课程`)
+    } else {
+      ElMessage.error(response.data?.msg || '课程数据加载失败')
+      // 使用模拟数据作为备用
+      courses.value = getMockCourses()
+      pagination.total = courses.value.length
+    }
+  } catch (error) {
+    console.error('加载课程数据失败:', error)
+    ElMessage.error('网络错误，使用模拟数据')
+    // 使用模拟数据作为备用
+    courses.value = getMockCourses()
+    pagination.total = courses.value.length
+  }
+}
+
+// 模拟课程数据（备用）
+const getMockCourses = () => {
+  return [
+    {
+      id: 1,
+      title: '高中数学函数专题精讲',
+      description: '深入讲解函数概念、性质和应用，帮助掌握函数核心知识点',
+      cover: '',
+      category: 'math',
+      level: 'advanced',
+      duration: '12小时',
+      instructor: {
+        id: 1,
+        name: '张老师',
+        avatar: ''
+      },
+      college: '数学学院',
+      studentCount: 256,
+      rating: 4.7,
+      tags: ['函数', '数学', '高中']
+    },
+    {
+      id: 2,
+      title: '英语四级词汇速记',
+      description: '高效记忆四级核心词汇，提升词汇量和应用能力',
+      cover: '',
+      category: 'english',
+      level: 'intermediate',
+      duration: '8小时',
+      instructor: {
+        id: 2,
+        name: '李老师',
+        avatar: ''
+      },
+      college: '外国语学院',
+      studentCount: 189,
+      rating: 4.5,
+      tags: ['英语', '四级', '词汇']
+    }
+  ]
+}
+
 // 报名课程
 const enrollCourse = (course) => {
   ElMessage.success(`成功报名课程: ${course.title}`)
@@ -358,18 +345,6 @@ const enrollCourse = (course) => {
 // 购买课程
 const purchaseCourse = (course) => {
   ElMessage.warning(`购买课程: ${course.title} - 价格: ￥${course.price}`)
-}
-
-// 加载课程数据
-const loadCourses = async () => {
-  try {
-    // 这里可以调用API获取课程数据
-    pagination.total = courses.value.length
-    ElMessage.success('课程数据加载完成')
-  } catch (error) {
-    console.error('加载课程数据失败:', error)
-    ElMessage.error('数据加载失败')
-  }
 }
 
 onMounted(() => {
@@ -412,14 +387,97 @@ onMounted(() => {
 }
 
 .course-card {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   border: none;
+  height: 280px;
+  display: flex;
+  flex-direction: column;
 }
 
 .course-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.course-content {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.course-title {
+  font-size: 16px;
+  color: #303133;
+  margin-bottom: 8px;
+  line-height: 1.4;
+  height: 44px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.course-description {
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  height: 63px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  flex: 1;
+}
+
+.course-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.instructor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.course-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.course-stats .college {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.course-stats .students {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.course-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.course-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
 }
 
 .course-cover {

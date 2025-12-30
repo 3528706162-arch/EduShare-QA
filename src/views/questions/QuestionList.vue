@@ -38,7 +38,7 @@
         <el-skeleton :rows="5" animated />
       </div>
 
-      <div v-else-if="questions.length > 0" class="question-items">
+      <div v-else-if="questions && questions.length > 0" class="question-items">
         <div 
           v-for="question in questions" 
           :key="question.id" 
@@ -49,6 +49,7 @@
             <div class="question-header">
               <h3 class="question-title">{{ question.title }}</h3>
               <div class="question-status">
+                <!-- 根据实际数据调整状态显示 -->
                 <el-tag 
                   v-if="question.isSolved" 
                   type="success" 
@@ -74,22 +75,39 @@
             </div>
             
             <div class="question-content">
-              <p class="question-description">{{ question.description }}</p>
+              <p class="question-description">{{ question.content }}</p>
+              
+              <!-- 显示附件图片 -->
+              <div v-if="question.fileUrl" class="question-attachment">
+                <el-image
+                  :src="question.fileUrl"
+                  :preview-src-list="[question.fileUrl]"
+                  fit="cover"
+                  style="width: 100px; height: 100px; border-radius: 4px;"
+                >
+                  <template #error>
+                    <div class="image-error">
+                      <el-icon><Picture /></el-icon>
+                      <span>图片加载失败</span>
+                    </div>
+                  </template>
+                </el-image>
+              </div>
             </div>
 
             <div class="question-footer">
               <div class="question-meta">
-                <span class="author">提问者: {{ question.author }}</span>
-                <span class="time">{{ formatTime(question.createTime) }}</span>
-                <span class="views">浏览: {{ question.viewCount }}</span>
-                <span class="answers">回答: {{ question.answerCount }}</span>
+                <span class="author">提问者: {{ getUserName(question.authorId) }}</span>
+                <span class="class-belong">课程: {{ question.classBelong || '未分类' }}</span>
+                <span class="time">{{ formatTime(question.createdAt) }}</span>
+                <span class="type">分类: {{ question.questionType || '通用' }}</span>
               </div>
               
               <div class="question-tags">
                 <el-tag
-                  v-for="tag in question.tags"
+                  v-for="tag in getTagsArray(question.tags)"
                   :key="tag"
-                  type="info"
+                  type="primary"
                   size="small"
                 >
                   {{ tag }}
@@ -125,7 +143,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuestionsStore } from '@/stores/questions'
-import { Search, Plus } from '@element-plus/icons-vue'
+import { Search, Plus, Picture } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const questionsStore = useQuestionsStore()
@@ -137,7 +155,84 @@ const pageSize = ref(10)
 const loading = ref(false)
 
 const questions = computed(() => questionsStore.questions)
-const total = computed(() => questionsStore.total)
+const total = computed(() => questionsStore.pagination.total)
+
+// 用户名称缓存
+const userNameCache = ref({})
+const loadingNames = ref({})
+const userNames = ref({})
+
+// 通过API获取用户名并更新响应式数据
+const fetchUserName = async (userId) => {
+  if (!userId) return
+  
+  // 如果已经在缓存中，直接返回
+  if (userNameCache.value[userId]) {
+    userNames.value[userId] = userNameCache.value[userId]
+    return
+  }
+  
+  // 如果正在加载中，跳过
+  if (loadingNames.value[userId]) {
+    return
+  }
+  
+  try {
+    loadingNames.value[userId] = true
+    
+    const response = await fetch(`/api/v1/user/getUsername/${userId}`)
+    const result = await response.json()
+    
+    if (result.code === 1 && result.data) {
+      // 缓存用户名并更新响应式数据
+      userNameCache.value[userId] = result.data
+      userNames.value[userId] = result.data
+    } else {
+      // API调用失败，使用默认值
+      userNameCache.value[userId] = `用户${userId}`
+      userNames.value[userId] = `用户${userId}`
+    }
+  } catch (error) {
+    console.error(`获取用户${userId}名称失败:`, error)
+    // 出错时使用默认值
+    userNameCache.value[userId] = `用户${userId}`
+    userNames.value[userId] = `用户${userId}`
+  } finally {
+    loadingNames.value[userId] = false
+  }
+}
+
+// 获取用户名的显示函数
+const getUserName = (userId) => {
+  if (!userId) return '未知用户'
+  return userNames.value[userId] || '加载中...'
+}
+
+// 加载问题时预加载用户名
+const loadQuestions = async () => {
+  loading.value = true
+  try {
+    await questionsStore.fetchQuestions({
+      page: currentPage.value,
+      limit: pageSize.value,
+      search: searchKeyword.value,
+      status: filterStatus.value
+    })
+    
+    // 预加载所有问题的用户名
+    if (questions.value && questions.value.length > 0) {
+      questions.value.forEach(question => {
+        if (question.authorId) {
+          fetchUserName(question.authorId)
+        }
+      })
+    }
+  } catch (error) {
+    console.error('加载问题列表失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
 
 const handleSearch = () => {
   currentPage.value = 1
@@ -167,6 +262,13 @@ const viewQuestion = (id) => {
   router.push(`/questions/${id}`)
 }
 
+// 将标签字符串转换为数组
+const getTagsArray = (tags) => {
+  if (!tags) return []
+  if (Array.isArray(tags)) return tags
+  return tags.split(',').map(tag => tag.trim()).filter(tag => tag)
+}
+
 const formatTime = (time) => {
   if (!time) return ''
   const now = new Date()
@@ -188,22 +290,6 @@ const formatTime = (time) => {
     return Math.floor(diff / day) + '天前'
   } else {
     return target.toLocaleDateString('zh-CN')
-  }
-}
-
-const loadQuestions = async () => {
-  loading.value = true
-  try {
-    await questionsStore.getQuestions({
-      page: currentPage.value,
-      limit: pageSize.value,
-      search: searchKeyword.value,
-      status: filterStatus.value
-    })
-  } catch (error) {
-    console.error('加载问题列表失败:', error)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -298,6 +384,29 @@ onMounted(() => {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.question-attachment {
+  margin-top: 12px;
+}
+
+.image-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  color: #909399;
+  font-size: 12px;
+}
+
+.image-error .el-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
 }
 
 .question-footer {
@@ -320,6 +429,13 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* 蓝色标签样式 */
+.question-tags .el-tag {
+  background-color: #ecf5ff;
+  border-color: #d9ecff;
+  color: #409eff;
 }
 
 .pagination-container {

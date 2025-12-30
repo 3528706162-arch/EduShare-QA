@@ -63,36 +63,41 @@ class ApiService {
   resources = {
     list: (params = {}) => {
       const queryString = new URLSearchParams(params).toString()
-      return this.request(`/resources?${queryString}`)
+      return this.request(`/api/v1/resource/findall?${queryString}`)
     },
 
-    get: (id) => this.request(`/resources/${id}`),
+    findByItem: (searchParams = {}) => this.request('/api/v1/resource/findByItem', {
+      method: 'POST',
+      body: JSON.stringify(searchParams)
+    }),
 
-    create: (resourceData) => this.request('/resources', {
+    get: (id) => this.request(`/api/v1/resource/${id}`),
+
+    create: (resourceData) => this.request('/api/v1/resource/upload', {
       method: 'POST',
       body: JSON.stringify(resourceData)
     }),
 
-    update: (id, resourceData) => this.request(`/resources/${id}`, {
+    update: (id, resourceData) => this.request(`/api/v1/resource/${id}`, {
       method: 'PUT',
       body: JSON.stringify(resourceData)
     }),
 
-    delete: (id) => this.request(`/resources/${id}`, {
+    delete: (id) => this.request(`/api/v1/resource/${id}`, {
       method: 'DELETE'
     }),
 
-    upload: (formData) => this.request('/resources/upload', {
+    upload: (formData) => this.request('/api/v1/resource/upload', {
       method: 'POST',
       headers: {},
       body: formData
     }),
 
-    search: (keyword) => this.request(`/resources/search?keyword=${encodeURIComponent(keyword)}`),
+    search: (keyword) => this.request(`/api/v1/resource/search?keyword=${encodeURIComponent(keyword)}`),
 
-    getCategories: () => this.request('/resources/categories'),
+    getCategories: () => this.request('/api/v1/resource/categories'),
 
-    download: (id) => this.request(`/resources/${id}/download`)
+    download: (id) => this.request(`/api/v1/resource/${id}/download`)
   }
 
   // 问答相关API

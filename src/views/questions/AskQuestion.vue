@@ -31,9 +31,9 @@
           />
         </el-form-item>
 
-        <el-form-item label="问题描述" prop="description">
+        <el-form-item label="问题描述" prop="content">
           <el-input
-            v-model="form.description"
+            v-model="form.content"
             type="textarea"
             :rows="8"
             placeholder="请详细描述您的问题背景、遇到的困难、尝试过的解决方案等..."
@@ -54,6 +54,28 @@
             <el-option label="学习建议" value="learning"></el-option>
             <el-option label="其他" value="other"></el-option>
           </el-select>
+        </el-form-item>
+
+        <!-- 新增：课程所属 -->
+        <el-form-item label="课程所属" prop="classBelong">
+          <el-select 
+            v-model="form.classBelong" 
+            placeholder="请选择所属课程" 
+            style="width: 100%"
+            :loading="loadingCourses"
+            filterable
+            clearable
+          >
+            <el-option 
+              v-for="course in courses" 
+              :key="course.id" 
+              :label="course.title" 
+              :value="course.title" 
+            />
+          </el-select>
+          <div class="form-tips">
+            <small>选择相关课程有助于问题分类和针对性解答</small>
+          </div>
         </el-form-item>
 
         <el-form-item label="问题标签" prop="tags">
@@ -83,19 +105,6 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="悬赏积分" prop="rewardPoints">
-          <el-input-number
-            v-model="form.rewardPoints"
-            :min="0"
-            :max="100"
-            :step="5"
-            placeholder="设置悬赏积分（可选）"
-          />
-          <div class="points-tips">
-            <small>设置悬赏积分可以吸引更多回答者，积分将从您的账户扣除</small>
-          </div>
-        </el-form-item>
-
         <el-form-item label="附件" prop="attachments">
           <el-upload
             class="upload-demo"
@@ -105,6 +114,7 @@
             :before-upload="beforeUpload"
             :on-success="handleSuccess"
             :on-error="handleError"
+            :on-progress="handleProgress"
             :file-list="fileList"
             :limit="3"
             multiple
@@ -119,6 +129,61 @@
               </div>
             </template>
           </el-upload>
+          
+          <!-- 上传进度显示 -->
+          <div v-if="uploadProgress > 0" class="upload-progress">
+            <el-progress 
+              :percentage="uploadProgress" 
+              :status="uploadStatus"
+              :stroke-width="8"
+            />
+          </div>
+          
+          <!-- 图片预览区域 -->
+          <div v-if="showImagePreview" class="image-preview">
+            <div class="preview-header">
+              <span class="preview-title">图片预览</span>
+              <el-button 
+                type="danger" 
+                size="small" 
+                @click="showImagePreview = false"
+              >
+                关闭预览
+              </el-button>
+            </div>
+            <div class="preview-content">
+              <el-image 
+                :src="imagePreviewUrl" 
+                :preview-src-list="[imagePreviewUrl]"
+                fit="contain"
+                style="max-width: 100%; max-height: 300px;"
+              >
+                <template #error>
+                  <div class="image-error">
+                    <el-icon><Picture /></el-icon>
+                    <span>图片加载失败</span>
+                  </div>
+                </template>
+              </el-image>
+            </div>
+          </div>
+          
+          <!-- 已上传文件列表 -->
+          <div v-if="form.attachments.length > 0" class="attachments-list">
+            <h4>已上传的附件：</h4>
+            <div class="attachment-item" v-for="(attachment, index) in form.attachments" :key="index">
+              <el-icon><Document /></el-icon>
+              <span class="attachment-name">{{ attachment.name }}</span>
+              <el-button 
+                type="danger" 
+                size="small" 
+                @click="removeAttachment(index)"
+                :icon="Close"
+              >
+                删除
+              </el-button>
+            </div>
+          </div>
         </el-form-item>
 
         <el-form-item>
@@ -163,7 +228,9 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuestionsStore } from '@/stores/questions'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { UploadFilled, Picture, Document, Close } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import apiService from '@/services/api'
 
 const router = useRouter()
 const questionsStore = useQuestionsStore()
@@ -173,24 +240,31 @@ const InputRef = ref()
 
 const form = reactive({
   title: '',
-  description: '',
+  content: '', // 修改为content以匹配后端API
   category: '',
+  classBelong: '', // 修改：使用classBelong字段名
   tags: [],
-  rewardPoints: 0,
   attachments: []
 })
+
+// 课程列表
+const courses = ref([])
+const loadingCourses = ref(false)
 
 const rules = reactive({
   title: [
     { required: true, message: '请输入问题标题', trigger: 'blur' },
     { min: 10, max: 100, message: '标题长度在 10 到 100 个字符', trigger: 'blur' }
   ],
-  description: [
+  content: [ // 修改为content以匹配后端API
     { required: true, message: '请输入问题描述', trigger: 'blur' },
     { min: 20, message: '描述内容至少20个字符', trigger: 'blur' }
   ],
   category: [
     { required: true, message: '请选择问题分类', trigger: 'change' }
+  ],
+  classBelong: [
+    { required: false, message: '请选择所属课程', trigger: 'change' }
   ],
   tags: [
     { 
@@ -210,8 +284,12 @@ const fileList = ref([])
 const inputVisible = ref(false)
 const inputValue = ref('')
 const submitting = ref(false)
+const uploadProgress = ref(0)
+const uploadStatus = ref('')
+const showImagePreview = ref(false) // 图片预览显示状态
+const imagePreviewUrl = ref('') // 图片预览URL
 
-const uploadUrl = ref('/api/questions/upload')
+const uploadUrl = ref('/api/v1/Fileupload') // 修改为正确的Fileupload接口地址
 const uploadHeaders = ref({
   Authorization: `Bearer ${localStorage.getItem('token')}`
 })
@@ -236,6 +314,10 @@ const handleInputConfirm = () => {
 }
 
 const beforeUpload = (file) => {
+  // 重置预览状态
+  showImagePreview.value = false
+  imagePreviewUrl.value = ''
+  
   const isLt10M = file.size / 1024 / 1024 < 10
   if (!isLt10M) {
     ElMessage.error('文件大小不能超过 10MB!')
@@ -262,45 +344,101 @@ const beforeUpload = (file) => {
 }
 
 const handleSuccess = (response, file) => {
-  form.attachments.push({
-    name: file.name,
-    url: response.data.url
-  })
-  ElMessage.success('文件上传成功!')
+  uploadProgress.value = 100
+  uploadStatus.value = 'success'
+  
+  // 根据后端Upload接口的响应格式处理
+  if (response && response.code === 1 && response.data) {
+    const attachment = {
+      name: file.name,
+      url: response.data // 修复：正确的URL字段在response.data中
+    }
+    form.attachments.push(attachment)
+    
+    // 检查是否为图片格式，如果是则显示预览
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+    const isImage = imageExtensions.some(ext => response.data.toLowerCase().includes(ext))
+    
+    if (isImage) {
+      showImagePreview.value = true
+      imagePreviewUrl.value = response.data
+      ElMessage.success('图片上传成功! 已显示预览')
+    } else {
+      showImagePreview.value = false
+      ElMessage.success('文件上传成功!')
+    }
+  } else {
+    ElMessage.error('文件上传失败: ' + (response?.msg || '未知错误'))
+  }
 }
 
 const handleError = (error, file) => {
+  uploadProgress.value = 0
+  uploadStatus.value = 'exception'
   ElMessage.error('文件上传失败!')
+}
+
+const handleProgress = (event, file) => {
+  uploadProgress.value = Math.round(event.percent)
+}
+
+// 删除附件
+const removeAttachment = (index) => {
+  form.attachments.splice(index, 1)
+  ElMessage.success('附件已删除')
+}
+
+// 加载课程列表
+const loadCourses = async () => {
+  loadingCourses.value = true
+  try {
+    const response = await apiService.courses.list()
+    if (response.success && response.data?.code === 1) {
+      courses.value = response.data.data || []
+    } else {
+      ElMessage.error(response.data?.msg || '获取课程列表失败')
+    }
+  } catch (error) {
+    console.error('加载课程列表失败:', error)
+    ElMessage.error('网络错误，请稍后重试')
+  } finally {
+    loadingCourses.value = false
+  }
 }
 
 const submitForm = async () => {
   if (!questionForm.value) return
   
   try {
-    const valid = await questionForm.value.validate()
-    if (!valid) return
-    
+    await questionForm.value.validate()
     submitting.value = true
     
+    // 构建问题数据
     const questionData = {
       title: form.title,
-      description: form.description,
+      content: form.content,
       category: form.category,
+      classBelong: form.classBelong, // 修改：使用classBelong字段
       tags: form.tags,
-      rewardPoints: form.rewardPoints,
       attachments: form.attachments
     }
     
+    console.log('提交的问题数据:', questionData)
+    
     const result = await questionsStore.createQuestion(questionData)
+    
     if (result.success) {
-      ElMessage.success('问题发布成功!')
+      ElMessage.success(result.message)
+      // 清除草稿
+      localStorage.removeItem('questionDraft')
+      // 跳转到问题列表
       router.push('/questions')
     } else {
-      ElMessage.error('问题发布失败: ' + result.error)
+      ElMessage.error(result.error || '发布失败')
     }
   } catch (error) {
-    console.error('提交问题失败:', error)
-    ElMessage.error('提交失败，请重试')
+    console.error('表单验证失败:', error)
+    ElMessage.error('请检查表单填写是否正确')
   } finally {
     submitting.value = false
   }
@@ -310,10 +448,10 @@ const saveDraft = () => {
   // 保存草稿逻辑
   const draft = {
     title: form.title,
-    description: form.description,
+    content: form.content, // 修复：使用content字段
     category: form.category,
+    classBelong: form.classBelong, // 修改：使用classBelong字段
     tags: form.tags,
-    rewardPoints: form.rewardPoints,
     attachments: form.attachments,
     saveTime: new Date().toISOString()
   }
@@ -341,10 +479,10 @@ const loadDraft = () => {
     try {
       const draftData = JSON.parse(draft)
       form.title = draftData.title || ''
-      form.description = draftData.description || ''
+      form.content = draftData.content || '' // 修复：使用content字段
       form.category = draftData.category || ''
+      form.classBelong = draftData.classBelong || '' // 修改：使用classBelong字段
       form.tags = draftData.tags || []
-      form.rewardPoints = draftData.rewardPoints || 0
       form.attachments = draftData.attachments || []
       
       ElMessage.info('检测到未保存的草稿，已自动加载')
@@ -356,6 +494,7 @@ const loadDraft = () => {
 
 onMounted(() => {
   loadDraft()
+  loadCourses() // 加载课程列表
 })
 </script>
 
@@ -411,6 +550,81 @@ onMounted(() => {
 .tag-tips, .points-tips {
   margin-top: 8px;
   color: #909399;
+}
+
+/* 上传进度样式 */
+.upload-progress {
+  margin-top: 16px;
+}
+
+/* 图片预览样式 */
+.image-preview {
+  margin-top: 16px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 16px;
+  background-color: #f8f9fa;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.preview-title {
+  font-weight: 600;
+  color: #303133;
+}
+
+.preview-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.image-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #909399;
+}
+
+.image-error .el-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+/* 已上传文件列表样式 */
+.attachments-list {
+  margin-top: 16px;
+}
+
+.attachments-list h4 {
+  font-size: 14px;
+  color: #303133;
+  margin-bottom: 12px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.attachment-item .el-icon {
+  color: #409eff;
+  margin-right: 8px;
+}
+
+.attachment-name {
+  flex: 1;
+  color: #606266;
+  font-size: 14px;
 }
 
 .guide-card {
@@ -470,6 +684,15 @@ onMounted(() => {
   
   .guide-content {
     font-size: 14px;
+  }
+  
+  .attachment-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .attachment-name {
+    margin: 8px 0;
   }
 }
 </style>
