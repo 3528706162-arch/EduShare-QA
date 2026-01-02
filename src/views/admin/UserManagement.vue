@@ -105,7 +105,7 @@
         <el-table-column label="用户信息" min-width="200">
           <template #default="{ row }">
             <div class="user-info">
-              <el-avatar :size="40" :src="row.avatar" />
+              <el-avatar :size="40" :src="row.imageUrl || row.avatar" />
               <div class="user-details">
                 <div class="username">{{ row.username }}</div>
                 <div class="email">{{ row.email }}</div>

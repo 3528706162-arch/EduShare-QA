@@ -1,14 +1,14 @@
 <template>
-  <el-container class="app-layout">
+  <div class="app-layout">
     <!-- 头部 -->
     <AppHeader />
     
-    <el-container style="flex: 1; display: flex;">
-  <!-- 侧边栏 -->
-  <AppSidebar v-if="showSidebar" />
-  
-  <!-- 主内容区域 -->
-  <el-main class="main-content" style="flex: 1; width: 100%;">
+    <div class="layout-body">
+      <!-- 侧边栏 -->
+      <AppSidebar v-if="showSidebar" />
+      
+      <!-- 主内容区域 -->
+      <main class="main-content">
         <!-- 页面标题 -->
         <div class="page-header" v-if="$route.meta.title">
           <h2 class="page-title">{{ $route.meta.title }}</h2>
@@ -33,9 +33,9 @@
         <div class="page-content">
           <router-view />
         </div>
-      </el-main>
-    </el-container>
-  </el-container>
+      </main>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -87,6 +87,12 @@ const breadcrumbItems = computed(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.layout-body {
+  flex: 1;
+  display: flex;
+  width: 100%;
 }
 
 .main-content {

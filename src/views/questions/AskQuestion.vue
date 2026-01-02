@@ -226,14 +226,17 @@
 
 <script setup>
 import { ref, reactive, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuestionsStore } from '@/stores/questions'
+import { useAuthStore } from '@/stores/auth'
 import { UploadFilled, Picture, Document, Close } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import apiService from '@/services/api'
 
 const router = useRouter()
+const route = useRoute()
 const questionsStore = useQuestionsStore()
+const authStore = useAuthStore()
 
 const questionForm = ref()
 const InputRef = ref()
@@ -492,9 +495,28 @@ const loadDraft = () => {
   }
 }
 
+// 检查用户权限，限制管理员访问
+const checkPermission = () => {
+  if (authStore.userRole === 'admin') {
+    ElMessage.warning('管理员无法提问，请使用学生账号进行操作')
+    router.push('/questions')
+    return false
+  }
+  return true
+}
+
 onMounted(() => {
+  if (!checkPermission()) {
+    return
+  }
   loadDraft()
   loadCourses() // 加载课程列表
+  
+  // 检查URL参数，如果有课程信息则自动填充
+  if (route.query.courseTitle) {
+    form.classBelong = route.query.courseTitle
+    ElMessage.success(`已自动选择课程: ${route.query.courseTitle}`)
+  }
 })
 </script>
 

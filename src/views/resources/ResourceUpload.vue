@@ -98,7 +98,7 @@
             </div>
             <template #tip>
               <div class="el-upload__tip">
-                支持 PDF、Word、Excel、PPT、图片等格式，单个文件不超过 100MB
+                支持 PDF、Word、Excel、PPT、图片、压缩包(ZIP/RAR/7Z)等格式，单个文件不超过 100MB
               </div>
             </template>
           </el-upload>
@@ -172,7 +172,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, nextTick, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useResourcesStore } from '@/stores/resources'
 import { useAuthStore } from '@/stores/auth'
 import apiService from '@/services/api'
@@ -180,6 +180,7 @@ import { UploadFilled, Close, Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+const route = useRoute()
 const resourcesStore = useResourcesStore()
 const authStore = useAuthStore()
 
@@ -275,11 +276,23 @@ const beforeUpload = (file) => {
     'image/jpeg',
     'image/png',
     'image/gif',
-    'text/plain'
+    'text/plain',
+    'application/zip',
+    'application/x-rar-compressed',
+    'application/x-7z-compressed'
   ]
   
-  if (!allowedTypes.includes(file.type)) {
-    ElMessage.error('不支持的文件格式!')
+  // 获取文件扩展名
+  const fileName = file.name.toLowerCase()
+  const fileExtension = fileName.split('.').pop()
+  const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'txt', 'zip', 'rar', '7z']
+  
+  // 双重检查：既检查MIME类型，也检查文件扩展名
+  const isTypeAllowed = allowedTypes.includes(file.type)
+  const isExtensionAllowed = allowedExtensions.includes(fileExtension)
+  
+  if (!isTypeAllowed && !isExtensionAllowed) {
+    ElMessage.error(`不支持的文件格式! 文件类型: ${file.type}, 扩展名: ${fileExtension}`)
     return false
   }
   
@@ -448,8 +461,42 @@ const loadCourses = async () => {
   }
 }
 
+// 检查用户权限，限制管理员访问
+const checkPermission = () => {
+  if (authStore.userRole === 'admin') {
+    ElMessage.warning('管理员无法上传资源，请使用学生账号进行操作')
+    router.push('/resources')
+    return false
+  }
+  return true
+}
+
 onMounted(() => {
-  loadCourses()
+  if (!checkPermission()) {
+    return
+  }
+  loadCourses().then(() => {
+    // 检查URL参数，如果有课程信息则自动填充
+    const courseId = route.query.courseId
+    const courseTitle = route.query.courseTitle
+    
+    if (courseId && courseTitle) {
+      // 检查课程列表中是否存在该课程
+      const existingCourse = courses.value.find(course => course.id === courseId)
+      if (existingCourse) {
+        form.courseId = courseId
+        ElMessage.success(`已自动选择课程: ${courseTitle}`)
+      } else {
+        // 如果课程列表中不存在，则添加该课程到列表中
+        courses.value.push({
+          id: courseId,
+          title: courseTitle
+        })
+        form.courseId = courseId
+        ElMessage.success(`已自动选择课程: ${courseTitle}`)
+      }
+    }
+  })
 })
 </script>
 

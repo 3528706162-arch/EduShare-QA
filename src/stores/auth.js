@@ -108,20 +108,46 @@ export const useAuthStore = defineStore('auth', () => {
   
   const updateProfile = async (profileData) => {
     try {
-      if (import.meta.env.DEV) {
-        // 开发环境模拟更新
-        user.value = { ...user.value, ...profileData }
+      // 构建完整的更新数据，确保包含id字段
+      const updateData = {
+        id: user.value?.id, // 确保包含id字段，后端需要这个字段来识别用户
+        username: profileData.username || user.value?.username,
+        imageUrl: profileData.imageUrl || profileData.avatar || user.value?.imageUrl,
+        email: profileData.email || user.value?.email,
+        phonenumber: profileData.phonenumber || profileData.phone || user.value?.phonenumber
+      }
+      
+      // 确保id字段存在且有效
+      if (!updateData.id) {
+        throw new Error('用户ID不存在，无法更新用户信息')
+      }
+      
+      console.log('发送更新请求:', updateData) // 调试信息
+      
+      // 直接调用后端更新接口
+      const response = await fetch('/api/v1/user', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(updateData)
+      })
+      
+      if (!response.ok) {
+        throw new Error(`更新用户信息失败: ${response.status} ${response.statusText}`)
+      }
+      
+      const result = await response.json()
+      console.log('更新响应:', result) // 调试信息
+      
+      if (result.code === 1) {
+        // 更新本地存储的用户信息
+        user.value = { ...user.value, ...updateData }
         localStorage.setItem('user', JSON.stringify(user.value))
         return { success: true, message: '个人信息更新成功' }
       } else {
-        const response = await apiService.put('/auth/profile', profileData)
-        if (response.success) {
-          user.value = { ...user.value, ...response.data }
-          localStorage.setItem('user', JSON.stringify(user.value))
-          return { success: true, message: '个人信息更新成功' }
-        } else {
-          throw new Error(response.error || '更新失败')
-        }
+        throw new Error(result.msg || '更新失败')
       }
     } catch (error) {
       console.error('更新个人信息失败:', error)

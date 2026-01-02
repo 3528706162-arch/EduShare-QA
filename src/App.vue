@@ -1,9 +1,7 @@
 <template>
   <div id="app">
     <!-- 根据路由元信息决定是否显示布局 -->
-    <AppLayout v-if="!$route.meta.hideLayout">
-      <router-view />
-    </AppLayout>
+    <AppLayout v-if="!$route.meta.hideLayout" />
     <router-view v-else />
   </div>
 </template>

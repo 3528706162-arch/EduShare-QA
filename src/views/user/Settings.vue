@@ -575,7 +575,7 @@ const loadUserInfo = async () => {
         bio: userInfo.bio || '',
         skills: userInfo.skills || [],
         location: userInfo.location || '',
-        avatar: userInfo.avatar || '/default-avatar.png'
+        avatar: userInfo.imageUrl || userInfo.avatar || '/default-avatar.png'
       }
     }
   } catch (error) {

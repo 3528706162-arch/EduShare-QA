@@ -4,7 +4,7 @@
     <div class="sidebar-content">
       <!-- 用户信息卡片 -->
       <div class="user-card" v-if="user">
-        <el-avatar :size="60" :src="user.avatar" class="user-avatar">
+        <el-avatar :size="60" :src="user.imageUrl || user.avatar" class="user-avatar">
           {{ user.username?.charAt(0) }}
         </el-avatar>
         <div class="user-info">
@@ -20,63 +20,21 @@
       <!-- 快捷操作 -->
       <div class="quick-actions" v-if="user">
         <div class="section-title">快捷操作</div>
-        <!-- 管理员快捷操作 -->
-        <div v-if="user.role === 'admin'" class="admin-actions">
-          <el-button type="primary" @click="navigateTo('CourseManagement')" class="quick-action-btn">
-            <el-icon><Collection /></el-icon>
-            课程管理
-          </el-button>
-          
-          <el-button type="success" @click="navigateTo('TeacherManagement')" class="quick-action-btn">
-            <el-icon><UserFilled /></el-icon>
-            教师管理
-          </el-button>
-          
-          <el-button type="warning" @click="navigateTo('ResourceManagement')" class="quick-action-btn">
-            <el-icon><Document /></el-icon>
-            学习资源管理
-          </el-button>
-          
-          <el-button type="danger" @click="navigateTo('QuestionManagement')" class="quick-action-btn">
-            <el-icon><QuestionFilled /></el-icon>
-            问答内容管理
-          </el-button>
-        </div>
-        
-        <!-- 学生和教师快捷操作 -->
-        <div v-else>
+        <!-- 个人中心快捷操作 -->
+        <div>
           <el-button 
-            v-if="user.role === 'student'" 
             type="primary" 
-            @click="$router.push('/resources/upload')"
+            @click="$router.push('/profile')"
             class="quick-action-btn"
           >
-            <el-icon><Upload /></el-icon>
-            上传资源
-          </el-button>
-          <el-button 
-            v-if="user.role === 'student'" 
-            type="success" 
-            @click="$router.push('/questions/ask')"
-            class="quick-action-btn"
-          >
-            <el-icon><Question /></el-icon>
-            提问
-          </el-button>
-          <el-button 
-            v-if="user.role === 'teacher'" 
-            type="warning" 
-            @click="handleAnswerQuestions"
-            class="quick-action-btn"
-          >
-            <el-icon><ChatDotRound /></el-icon>
-            回答问题
+            <el-icon><User /></el-icon>
+            个人中心
           </el-button>
         </div>
       </div>
 
       <!-- 统计信息 -->
-      <div class="stats-section" v-if="user">
+      <div class="stats-section" v-if="user && user.role !== 'admin'">
         <div class="section-title">我的统计</div>
         <div class="stats-grid">
           <div class="stat-item" v-if="user.role === 'student'">
@@ -90,10 +48,6 @@
           <div class="stat-item" v-if="user.role === 'teacher'">
             <div class="stat-value">{{ stats.answeredQuestions || 0 }}</div>
             <div class="stat-label">已回答</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">{{ stats.points || 0 }}</div>
-            <div class="stat-label">积分</div>
           </div>
         </div>
       </div>
@@ -122,7 +76,6 @@
             v-for="activity in recentActivities" 
             :key="activity.id"
             class="activity-item"
-            @click="handleActivityClick(activity)"
           >
             <div class="activity-icon">
               <el-icon v-if="activity.type === 'resource'"><Document /></el-icon>
@@ -143,6 +96,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import apiService from '@/services/api'
 import { Upload, QuestionFilled, ChatDotRound, Document, Collection, UserFilled } from '@element-plus/icons-vue'
 import { formatDateTime } from '@/utils/helpers'
 
@@ -208,46 +162,68 @@ const navigateTo = (routeName) => {
 // 获取统计数据
 const fetchStats = async () => {
   try {
-    if (!authStore.isAuthenticated || !authStore.user?.username) {
-      console.warn('用户未登录或用户名不存在，使用默认统计数据')
+    if (!authStore.isAuthenticated || !authStore.user?.id) {
+      console.warn('用户未登录或用户ID不存在，使用默认统计数据')
       stats.value = {
         uploadedResources: 0,
-        askedQuestions: 8,
-        answeredQuestions: 23,
-        points: 156
+        askedQuestions: 0,
+        answeredQuestions: 0,
+        points: 0
       }
       return
     }
 
     // 调用后端API获取用户上传资源数量
-    const response = await fetch(`/api/v1/resource/findUploadCount/${authStore.user.username}`)
+    const resourceResponse = await fetch(`/api/v1/resource/findUploadCount/${authStore.user.username}`)
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+    if (!resourceResponse.ok) {
+      throw new Error(`获取上传资源数量失败! status: ${resourceResponse.status}`)
     }
     
-    const result = await response.json()
+    const resourceResult = await resourceResponse.json()
     
-    if (result.code === 1) {
-      // 使用真实的上传资源数量，其他统计数据保持模拟
+    // 调用后端API获取用户提问数量（使用用户ID作为路径参数）
+    const questionResponse = await fetch(`/api/v1/question/findUploadCount/${authStore.user.id}`)
+    
+    if (!questionResponse.ok) {
+      throw new Error(`获取提问数量失败! status: ${questionResponse.status}`)
+    }
+    
+    const questionResult = await questionResponse.json()
+    
+    // 调用后端API获取用户回答问题数量（使用用户ID作为路径参数）
+    const answerResponse = await fetch(`/api/v1/answer/findAnswerCount/${authStore.user.id}`)
+    
+    if (!answerResponse.ok) {
+      throw new Error(`获取回答问题数量失败! status: ${answerResponse.status}`)
+    }
+    
+    const answerResult = await answerResponse.json()
+    
+    if (resourceResult.code === 1 && questionResult.code === 1 && answerResult.code === 1) {
+      // 使用真实的上传资源数量、提问数量和回答问题数量
       stats.value = {
-        uploadedResources: result.data,
-        askedQuestions: 8,
-        answeredQuestions: 23,
-        points: 156
+        uploadedResources: resourceResult.data,
+        askedQuestions: questionResult.data,
+        answeredQuestions: answerResult.data,
+        points: 0
       }
-      console.log('成功获取用户上传资源数量:', result.data)
+      console.log('成功获取用户统计数据:', {
+        uploadedResources: resourceResult.data,
+        askedQuestions: questionResult.data,
+        answeredQuestions: answerResult.data
+      })
     } else {
-      throw new Error(`API返回错误: ${result.msg}`)
+      throw new Error(`API返回错误: 资源-${resourceResult.msg}, 提问-${questionResult.msg}, 回答-${answerResult.msg}`)
     }
   } catch (error) {
     console.error('获取统计数据失败:', error)
     // 失败时使用默认值
     stats.value = {
       uploadedResources: 0,
-      askedQuestions: 8,
-      answeredQuestions: 23,
-      points: 156
+      askedQuestions: 0,
+      answeredQuestions: 0,
+      points: 0
     }
   }
 }
@@ -267,27 +243,90 @@ const fetchHotTags = async () => {
 
 // 获取最新动态
 const fetchRecentActivities = async () => {
-  // 模拟API调用
-  recentActivities.value = [
-    {
-      id: 1,
-      type: 'resource',
-      title: 'Java多线程编程指南',
-      time: new Date(Date.now() - 300000)
-    },
-    {
-      id: 2,
-      type: 'question',
-      title: '如何理解React的虚拟DOM？',
-      time: new Date(Date.now() - 600000)
-    },
-    {
-      id: 3,
-      type: 'resource',
-      title: 'Python数据分析实战',
-      time: new Date(Date.now() - 900000)
+  try {
+    if (!authStore.isAuthenticated || !authStore.user?.id) {
+      console.warn('用户未登录或用户ID不存在，跳过获取最新动态')
+      recentActivities.value = []
+      return
     }
-  ]
+
+    const activities = []
+    
+    // 获取最新的提问数据
+    try {
+      const questionResponse = await apiService.questions.findByItem({
+        authorId: authStore.user.id,
+        limit: 5
+      })
+      
+      if (questionResponse.success && questionResponse.data?.code === 1) {
+        const questions = questionResponse.data.data || []
+        questions.forEach(question => {
+          activities.push({
+            id: question.id,
+            type: 'question',
+            title: question.title || question.questionTitle || '未命名问题',
+            time: question.createTime || question.createdAt || new Date().toISOString()
+          })
+        })
+      }
+    } catch (error) {
+      console.error('获取提问数据失败:', error)
+    }
+    
+    // 获取最新的资源数据
+    try {
+      const resourceResponse = await apiService.resources.findByItem({
+        uploaderName: authStore.user.username,
+        limit: 5
+      })
+      
+      if (resourceResponse.success && resourceResponse.data?.code === 1) {
+        const resources = resourceResponse.data.data || []
+        resources.forEach(resource => {
+          activities.push({
+            id: resource.id,
+            type: 'resource',
+            title: resource.title || '未命名资源',
+            time: resource.createTime || resource.createdAt || new Date().toISOString()
+          })
+        })
+      }
+    } catch (error) {
+      console.error('获取资源数据失败:', error)
+    }
+    
+    // 按时间戳从近到远排序
+    activities.sort((a, b) => new Date(b.time) - new Date(a.time))
+    
+    // 只保留最新的5条活动记录
+    recentActivities.value = activities.slice(0, 5)
+    
+    console.log('获取最新动态成功，共', activities.length, '条记录')
+  } catch (error) {
+    console.error('获取最新动态失败:', error)
+    // 如果获取失败，使用默认的模拟数据作为回退
+    recentActivities.value = [
+      {
+        id: 1,
+        type: 'resource',
+        title: 'Java多线程编程指南',
+        time: new Date(Date.now() - 300000)
+      },
+      {
+        id: 2,
+        type: 'question',
+        title: '如何理解React的虚拟DOM？',
+        time: new Date(Date.now() - 600000)
+      },
+      {
+        id: 3,
+        type: 'resource',
+        title: 'Python数据分析实战',
+        time: new Date(Date.now() - 900000)
+      }
+    ]
+  }
 }
 
 onMounted(() => {

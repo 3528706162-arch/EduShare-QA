@@ -127,7 +127,7 @@ export const useResourcesStore = defineStore('resources', () => {
   
   const deleteResource = async (id) => {
     try {
-      const response = await fetch(`/api/resources/${id}`, {
+      const response = await fetch(`/api/v1/resource/${id}`, {
         method: 'DELETE'
       })
       

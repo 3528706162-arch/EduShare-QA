@@ -78,7 +78,7 @@ class ApiService {
       body: JSON.stringify(resourceData)
     }),
 
-    update: (id, resourceData) => this.request(`/api/v1/resource/${id}`, {
+    update: (resourceData) => this.request('/api/v1/resource', {
       method: 'PUT',
       body: JSON.stringify(resourceData)
     }),
@@ -106,6 +106,11 @@ class ApiService {
       const queryString = new URLSearchParams(params).toString()
       return this.request(`/questions?${queryString}`)
     },
+
+    findByItem: (searchParams = {}) => this.request('/api/v1/question/findByItem', {
+      method: 'POST',
+      body: JSON.stringify(searchParams)
+    }),
 
     get: (id) => this.request(`/questions/${id}`),
 
