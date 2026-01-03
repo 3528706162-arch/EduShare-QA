@@ -5,6 +5,10 @@ import { useAuthStore } from '@/stores/auth'
 const routes = [
   {
     path: '/',
+    redirect: '/home'
+  },
+  {
+    path: '/home',
     name: 'Home',
     component: () => import('@/views/Home.vue'),
     meta: { 
@@ -249,8 +253,8 @@ router.beforeEach((to, from, next) => {
   // 检查角色权限
   if (to.meta.roles && !to.meta.roles.includes(authStore.userRole)) {
     // 如果没有权限，跳转到首页并显示提示
-    if (from.path !== '/') {
-      next('/')
+    if (from.path !== '/home') {
+      next('/home')
     } else {
       next(false) // 停留在当前页面
     }

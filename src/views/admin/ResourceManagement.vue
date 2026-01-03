@@ -12,151 +12,11 @@
       <p>管理系统所有教育资源，包括审核、分类、统计等功能</p>
     </div>
 
-    <!-- 搜索和筛选区域 -->
-    <el-card class="search-card">
-      <div class="search-form">
-        <el-form :model="searchForm" :inline="true">
-          <el-form-item label="资源标题">
-            <el-input 
-              v-model="searchForm.title" 
-              placeholder="请输入资源标题"
-              clearable
-            />
-          </el-form-item>
-          
-          <el-form-item label="上传者">
-            <el-input 
-              v-model="searchForm.uploader" 
-              placeholder="请输入上传者用户名"
-              clearable
-            />
-          </el-form-item>
-          
-          <el-form-item label="资源分类">
-            <el-select v-model="searchForm.category" placeholder="请选择分类" clearable>
-              <el-option 
-                v-for="category in categories" 
-                :key="category.id"
-                :label="category.name" 
-                :value="category.id"
-              />
-            </el-select>
-          </el-form-item>
-          
-          <el-form-item label="状态">
-            <el-select v-model="searchForm.status" placeholder="请选择状态" clearable>
-              <el-option label="已发布" value="published" />
-              <el-option label="待审核" value="pending" />
-              <el-option label="已拒绝" value="rejected" />
-              <el-option label="已下架" value="offline" />
-            </el-select>
-          </el-form-item>
-          
-          <el-form-item label="文件类型">
-            <el-select v-model="searchForm.fileType" placeholder="请选择文件类型" clearable>
-              <el-option label="PDF文档" value="pdf" />
-              <el-option label="Word文档" value="doc" />
-              <el-option label="PPT演示" value="ppt" />
-              <el-option label="图片" value="image" />
-              <el-option label="视频" value="video" />
-              <el-option label="音频" value="audio" />
-              <el-option label="其他" value="other" />
-            </el-select>
-          </el-form-item>
-          
-          <el-form-item>
-            <el-button type="primary" @click="handleSearch">
-              <el-icon><Search /></el-icon>
-              搜索
-            </el-button>
-            <el-button @click="handleReset">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-    </el-card>
 
-    <!-- 统计信息 -->
-    <div class="stats-row">
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <el-card class="stat-card">
-            <div class="stat-content">
-              <div class="stat-icon total-icon">
-                <el-icon><Document /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.totalResources }}</div>
-                <div class="stat-label">总资源数</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :span="6">
-          <el-card class="stat-card">
-            <div class="stat-content">
-              <div class="stat-icon pending-icon">
-                <el-icon><Clock /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.pendingResources }}</div>
-                <div class="stat-label">待审核</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :span="6">
-          <el-card class="stat-card">
-            <div class="stat-content">
-              <div class="stat-icon published-icon">
-                <el-icon><Check /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.publishedResources }}</div>
-                <div class="stat-label">已发布</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :span="6">
-          <el-card class="stat-card">
-            <div class="stat-content">
-              <div class="stat-icon download-icon">
-                <el-icon><Download /></el-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-number">{{ stats.totalDownloads }}</div>
-                <div class="stat-label">总下载量</div>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
-    </div>
 
     <!-- 操作按钮区域 -->
     <div class="action-bar">
-      <el-button type="primary" @click="handleBatchApprove" :disabled="selectedResources.length === 0">
-        <el-icon><Check /></el-icon>
-        批量审核通过
-      </el-button>
       
-      <el-button type="warning" @click="handleBatchReject" :disabled="selectedResources.length === 0">
-        <el-icon><Close /></el-icon>
-        批量拒绝
-      </el-button>
-      
-      <el-button @click="handleExport">
-        <el-icon><Download /></el-icon>
-        导出数据
-      </el-button>
-      
-      <el-button type="danger" @click="handleBatchDelete" :disabled="selectedResources.length === 0">
-        <el-icon><Delete /></el-icon>
-        批量删除
-      </el-button>
     </div>
 
     <!-- 资源列表 -->
@@ -165,10 +25,7 @@
         <div class="table-header">
           <span>资源列表</span>
           <div class="header-actions">
-            <el-button text @click="refreshTable">
-              <el-icon><Refresh /></el-icon>
-              刷新
-            </el-button>
+            <!-- 刷新按钮已删除 -->
           </div>
         </div>
       </template>
@@ -187,131 +44,62 @@
         <el-table-column label="资源信息" min-width="300">
           <template #default="{ row }">
             <div class="resource-info">
-              <div class="resource-cover">
-                <el-image 
-                  v-if="row.cover" 
-                  :src="row.cover" 
-                  :preview-src-list="[row.cover]"
-                  fit="cover"
-                >
-                  <template #error>
-                    <div class="cover-placeholder">
-                      <el-icon><Document /></el-icon>
-                    </div>
-                  </template>
-                </el-image>
-                <div v-else class="cover-placeholder">
-                  <el-icon><Document /></el-icon>
-                </div>
+              <div class="resource-icon">
+                <el-icon><Document /></el-icon>
               </div>
               <div class="resource-details">
                 <div class="resource-title">{{ row.title }}</div>
                 <div class="resource-description">{{ row.description }}</div>
                 <div class="resource-meta">
-                  <span class="file-type">{{ getFileTypeLabel(row.fileType) }}</span>
-                  <span class="file-size">{{ formatFileSize(row.fileSize) }}</span>
-                  <span class="uploader">上传者: {{ row.uploader }}</span>
+                  <span class="resource-time">
+                    <el-icon><Clock /></el-icon>
+                    {{ formatTime(row.createTime || row.createdAt) }}
+                  </span>
+                  <span class="resource-downloads">
+                    <el-icon><Download /></el-icon>
+                    {{ row.downloadCount || 0 }} 下载
+                  </span>
+                  <el-tag size="small">{{ row.classBelong || row.category || '未分类' }}</el-tag>
+                  <el-tag v-if="row.fileType" size="small" type="info">{{ getFileTypeLabel(row.fileType) }}</el-tag>
                 </div>
               </div>
             </div>
           </template>
         </el-table-column>
         
-        <el-table-column label="分类" width="120">
+        <el-table-column label="上传者" width="120">
           <template #default="{ row }">
-            <el-tag>{{ getCategoryName(row.category) }}</el-tag>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag 
-              :type="getStatusType(row.status)"
-              effect="light"
-            >
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
+            {{ row.uploaderName || row.uploader || '未知' }}
           </template>
         </el-table-column>
         
         <el-table-column label="下载量" width="100" prop="downloadCount" sortable />
         
-        <el-table-column label="评分" width="100">
-          <template #default="{ row }">
-            <div class="rating">
-              <el-rate
-                v-model="row.rating"
-                disabled
-                show-score
-                text-color="#ff9900"
-                score-template="{value}"
-              />
-            </div>
-          </template>
-        </el-table-column>
-        
         <el-table-column label="上传时间" width="180">
           <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
+            {{ formatDate(row.createTime || row.createdAt) }}
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button 
-              size="small" 
-              @click="handlePreview(row)"
-            >
-              预览
-            </el-button>
-            
             <el-button 
               size="small" 
               type="primary" 
               @click="handleEdit(row)"
-              :disabled="row.status === 'rejected'"
             >
+              <el-icon><Edit /></el-icon>
               编辑
             </el-button>
             
-            <el-dropdown @command="(command) => handleCommand(command, row)">
-              <el-button size="small">
-                更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item 
-                    v-if="row.status === 'pending'" 
-                    command="approve"
-                  >
-                    审核通过
-                  </el-dropdown-item>
-                  <el-dropdown-item 
-                    v-if="row.status === 'pending'" 
-                    command="reject"
-                  >
-                    拒绝
-                  </el-dropdown-item>
-                  <el-dropdown-item 
-                    v-if="row.status === 'published'" 
-                    command="offline"
-                  >
-                    下架
-                  </el-dropdown-item>
-                  <el-dropdown-item 
-                    v-if="row.status === 'offline'" 
-                    command="publish"
-                  >
-                    重新上架
-                  </el-dropdown-item>
-                  <el-dropdown-item command="download">下载</el-dropdown-item>
-                  <el-dropdown-item command="statistics">统计</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided>
-                    删除
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <el-button 
+              size="small" 
+              type="danger" 
+              @click="handleDeleteResource(row)"
+            >
+              <el-icon><Delete /></el-icon>
+              删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -330,27 +118,81 @@
       </div>
     </el-card>
 
-    <!-- 审核对话框 -->
+    <!-- 编辑资源对话框 -->
     <el-dialog
-      v-model="reviewDialogVisible"
-      :title="reviewDialogTitle"
-      width="500px"
+      v-model="editResourceDialogVisible"
+      :title="editResourceForm.title ? '编辑资源：' + editResourceForm.title : '编辑资源'"
+      width="700px"
+      center
+      :before-close="handleCloseEditDialog"
     >
-      <el-form :model="reviewForm" label-width="80px">
-        <el-form-item label="审核意见">
-          <el-input
-            v-model="reviewForm.comment"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入审核意见（可选）"
-          />
-        </el-form-item>
-      </el-form>
+      <div class="resource-edit-detail">
+        <!-- 资源预览 -->
+        <div v-if="(editResourceForm.fileType === 'image' || editResourceForm.fileType === 'IMAGE') && editResourceForm.fileUrl" class="preview-section">
+          <h4>资源预览</h4>
+          <div class="image-preview">
+            <img :src="editResourceForm.fileUrl" :alt="editResourceForm.title" class="preview-image" />
+            <div class="preview-info">
+              <p><strong>文件地址:</strong> {{ editResourceForm.fileUrl }}</p>
+              <el-button type="primary" @click="openImageInNewTab(editResourceForm.fileUrl)">
+                在新标签页打开
+              </el-button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 资源基本信息 -->
+        <div class="detail-section">
+          <h4>资源基本信息</h4>
+          <el-form
+            ref="editResourceFormRef"
+            :model="editResourceForm"
+            :rules="editResourceRules"
+            label-width="100px"
+            label-position="left"
+          >
+            <el-form-item label="资源标题" prop="title">
+              <el-input v-model="editResourceForm.title" placeholder="请输入资源标题" />
+            </el-form-item>
+
+            <el-form-item label="资源描述" prop="description">
+              <el-input 
+                v-model="editResourceForm.description" 
+                type="textarea" 
+                :rows="3"
+                placeholder="请输入资源描述" 
+              />
+            </el-form-item>
+
+            <el-form-item label="所属课程" prop="classBelong">
+              <el-input v-model="editResourceForm.classBelong" placeholder="请输入所属课程" />
+            </el-form-item>
+
+            <el-form-item label="文件类型" prop="fileType">
+              <el-select v-model="editResourceForm.fileType" placeholder="请选择文件类型" clearable>
+                <el-option label="PDF文档" value="pdf" />
+                <el-option label="Word文档" value="doc" />
+                <el-option label="PPT演示" value="ppt" />
+                <el-option label="图片" value="image" />
+                <el-option label="视频" value="video" />
+                <el-option label="音频" value="audio" />
+                <el-option label="其他" value="other" />
+              </el-select>
+            </el-form-item>
+            
+            <el-form-item label="标签" prop="tags">
+              <el-input v-model="editResourceForm.tags" placeholder="请输入标签，多个标签用逗号分隔" />
+            </el-form-item>
+          </el-form>
+        </div>
+      </div>
       
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="reviewDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleReviewSubmit">确定</el-button>
+          <el-button @click="handleCloseEditDialog">取消</el-button>
+          <el-button type="primary" @click="saveResourceEdit" :loading="savingResource">
+            保存修改
+          </el-button>
         </span>
       </template>
     </el-dialog>
@@ -361,113 +203,14 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { 
   Search, Document, Clock, Check, Download, Delete, 
-  Refresh, ArrowDown, Close
+  Refresh, Edit
 } from '@element-plus/icons-vue'
-
-// 搜索表单
-const searchForm = reactive({
-  title: '',
-  uploader: '',
-  category: '',
-  status: '',
-  fileType: ''
-})
-
-// 资源分类
-const categories = ref([
-  { id: 1, name: '语文' },
-  { id: 2, name: '数学' },
-  { id: 3, name: '英语' },
-  { id: 4, name: '物理' },
-  { id: 5, name: '化学' },
-  { id: 6, name: '生物' },
-  { id: 7, name: '历史' },
-  { id: 8, name: '地理' },
-  { id: 9, name: '政治' },
-  { id: 10, name: '信息技术' }
-])
-
-// 统计数据
-const stats = reactive({
-  totalResources: 1256,
-  pendingResources: 23,
-  publishedResources: 980,
-  totalDownloads: 45678
-})
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { apiService } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 // 资源列表数据
-const resourceList = ref([
-  {
-    id: 1,
-    title: '高中数学必修一知识点总结',
-    description: '包含所有重要知识点和例题解析',
-    cover: '',
-    category: 2,
-    fileType: 'pdf',
-    fileSize: 2048576,
-    uploader: '张老师',
-    status: 'published',
-    downloadCount: 256,
-    rating: 4.5,
-    createdAt: '2024-01-10T14:30:00Z'
-  },
-  {
-    id: 2,
-    title: '英语四级词汇表',
-    description: '最新版四级考试必备词汇',
-    cover: '',
-    category: 3,
-    fileType: 'doc',
-    fileSize: 1048576,
-    uploader: '李同学',
-    status: 'pending',
-    downloadCount: 0,
-    rating: 0,
-    createdAt: '2024-01-15T09:15:00Z'
-  },
-  {
-    id: 3,
-    title: '物理实验视频教程',
-    description: '高中物理重要实验操作演示',
-    cover: '',
-    category: 5,
-    fileType: 'video',
-    fileSize: 52428800,
-    uploader: '王老师',
-    status: 'published',
-    downloadCount: 89,
-    rating: 4.2,
-    createdAt: '2024-01-12T16:45:00Z'
-  },
-  {
-    id: 4,
-    title: '化学元素周期表',
-    description: '高清彩色元素周期表图片',
-    cover: '',
-    category: 6,
-    fileType: 'image',
-    fileSize: 512000,
-    uploader: '赵同学',
-    status: 'rejected',
-    downloadCount: 0,
-    rating: 0,
-    createdAt: '2024-01-14T11:20:00Z'
-  },
-  {
-    id: 5,
-    title: '历史大事年表',
-    description: '从古代到现代的重要历史事件',
-    cover: '',
-    category: 7,
-    fileType: 'ppt',
-    fileSize: 3145728,
-    uploader: '刘老师',
-    status: 'offline',
-    downloadCount: 45,
-    rating: 4.0,
-    createdAt: '2024-01-08T10:00:00Z'
-  }
-])
+const resourceList = ref([])
 
 // 分页配置
 const pagination = reactive({
@@ -482,101 +225,140 @@ const loading = ref(false)
 // 选中的资源
 const selectedResources = ref([])
 
-// 审核对话框相关
-const reviewDialogVisible = ref(false)
-const reviewAction = ref('') // 'approve' 或 'reject'
-const currentResource = ref(null)
-const reviewForm = reactive({
-  comment: ''
+// 资源编辑相关变量
+const editResourceDialogVisible = ref(false)
+const savingResource = ref(false)
+const editResourceFormRef = ref()
+const editResourceForm = ref({
+  id: '',
+  title: '',
+  description: '',
+  classBelong: '',
+  fileType: '',
+  tags: '',
+  fileUrl: ''
+})
+const editResourceRules = ref({
+  title: [
+    { required: true, message: '请输入资源标题', trigger: 'blur' }
+  ],
+  description: [
+    { required: true, message: '请输入资源描述', trigger: 'blur' }
+  ],
+  fileType: [
+    { required: true, message: '请选择文件类型', trigger: 'change' }
+  ]
 })
 
-// 计算属性
-const reviewDialogTitle = computed(() => {
-  return reviewAction.value === 'approve' ? '审核通过' : '拒绝资源'
-})
 
-// 方法定义
-const handleSearch = () => {
-  pagination.currentPage = 1
-  loadResourceList()
-}
-
-const handleReset = () => {
-  Object.assign(searchForm, {
-    title: '',
-    uploader: '',
-    category: '',
-    status: '',
-    fileType: ''
-  })
-  pagination.currentPage = 1
-  loadResourceList()
-}
-
-const handleBatchApprove = () => {
-  if (selectedResources.value.length === 0) {
-    ElMessage.warning('请选择要审核的资源')
-    return
-  }
-  
-  ElMessageBox.confirm(
-    `确定要通过选中的 ${selectedResources.value.length} 个资源吗？`,
-    '确认审核',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    ElMessage.success('批量审核通过成功')
-    loadResourceList()
-  }).catch(() => {
-    ElMessage.info('已取消审核')
-  })
-}
-
-const handleBatchReject = () => {
-  if (selectedResources.value.length === 0) {
-    ElMessage.warning('请选择要拒绝的资源')
-    return
-  }
-  
-  reviewAction.value = 'reject'
-  reviewDialogVisible.value = true
-}
-
-const handleExport = () => {
-  ElMessage.success('导出功能开发中...')
-}
-
-const handleBatchDelete = () => {
-  if (selectedResources.value.length === 0) {
-    ElMessage.warning('请选择要删除的资源')
-    return
-  }
-  
-  ElMessageBox.confirm(
-    `确定要删除选中的 ${selectedResources.value.length} 个资源吗？`,
-    '确认删除',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    ElMessage.success('批量删除成功')
-    loadResourceList()
-  }).catch(() => {
-    ElMessage.info('已取消删除')
-  })
-}
 
 const handlePreview = (row) => {
   ElMessage.info(`预览资源: ${row.title}`)
 }
 
+// 在新标签页打开图片
+const openImageInNewTab = (url) => {
+  window.open(url, '_blank')
+}
+
 const handleEdit = (row) => {
-  ElMessage.info(`编辑资源: ${row.title}`)
+  // 打开编辑对话框并填充数据
+  editResourceForm.value = {
+    id: row.id,
+    title: row.title || '',
+    description: row.description || '',
+    classBelong: row.classBelong || row.category || '',
+    fileType: row.fileType || '',
+    tags: row.tags || '',
+    fileUrl: row.fileUrl || row.url || ''
+  }
+  editResourceDialogVisible.value = true
+}
+
+// 关闭编辑对话框
+const handleCloseEditDialog = () => {
+  editResourceDialogVisible.value = false
+  editResourceFormRef.value?.resetFields()
+  editResourceForm.value = {
+    id: '',
+    title: '',
+    description: '',
+    classBelong: '',
+    fileType: '',
+    tags: '',
+    fileUrl: ''
+  }
+}
+
+// 保存资源编辑
+const saveResourceEdit = async () => {
+  try {
+    savingResource.value = true
+    
+    // 表单验证
+    await editResourceFormRef.value.validate()
+    
+    // 调用API更新资源信息 - 正确的调用方式：传递包含ID的完整数据对象
+    const updateData = {
+      id: editResourceForm.value.id,
+      title: editResourceForm.value.title,
+      description: editResourceForm.value.description,
+      classBelong: editResourceForm.value.classBelong,
+      fileType: editResourceForm.value.fileType,
+      tags: editResourceForm.value.tags
+    }
+    
+    console.log('发送的更新数据:', updateData) // 调试日志
+    
+    const response = await apiService.resources.update(updateData)
+    
+    console.log('更新响应:', response) // 调试日志
+    
+    if (response.success) {
+      ElMessage.success('资源信息更新成功')
+      handleCloseEditDialog()
+      loadResourceList()
+    } else {
+      ElMessage.error('资源更新失败: ' + (response.error || '未知错误'))
+    }
+  } catch (error) {
+    if (error && error.errors) {
+      // 表单验证错误，不显示错误消息
+      return
+    }
+    console.error('更新资源失败:', error)
+    ElMessage.error('更新资源失败，请稍后重试')
+  } finally {
+    savingResource.value = false
+  }
+}
+
+// 删除单个资源
+const handleDeleteResource = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除资源 "${row.title}" 吗？此操作不可恢复。`,
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    // 调用API删除资源
+    await apiService.resources.delete(row.id)
+    
+    ElMessage.success('资源删除成功')
+    loadResourceList()
+  } catch (error) {
+    if (error === 'cancel') {
+      ElMessage.info('已取消删除')
+    } else {
+      console.error('删除资源失败:', error)
+      ElMessage.error('删除资源失败，请稍后重试')
+    }
+  }
 }
 
 const handleSelectionChange = (selection) => {
@@ -593,117 +375,53 @@ const handleCurrentChange = (page) => {
   loadResourceList()
 }
 
-const handleCommand = (command, row) => {
-  currentResource.value = row
-  
-  switch (command) {
-    case 'approve':
-      reviewAction.value = 'approve'
-      reviewDialogVisible.value = true
-      break
-    case 'reject':
-      reviewAction.value = 'reject'
-      reviewDialogVisible.value = true
-      break
-    case 'offline':
-      handleOfflineResource(row)
-      break
-    case 'publish':
-      handlePublishResource(row)
-      break
-    case 'download':
-      handleDownloadResource(row)
-      break
-    case 'statistics':
-      handleShowStatistics(row)
-      break
-    case 'delete':
-      handleDeleteResource(row)
-      break
-  }
-}
 
-const handleReviewSubmit = () => {
-  if (reviewAction.value === 'approve') {
-    ElMessage.success('资源审核通过')
-  } else {
-    ElMessage.success('资源已拒绝')
-  }
-  
-  reviewDialogVisible.value = false
-  reviewForm.comment = ''
-  loadResourceList()
-}
-
-const handleOfflineResource = (row) => {
-  ElMessageBox.confirm(`确定要下架资源 "${row.title}" 吗？`, '确认操作', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    ElMessage.success('资源已下架')
-    loadResourceList()
-  }).catch(() => {
-    ElMessage.info('已取消操作')
-  })
-}
-
-const handlePublishResource = (row) => {
-  ElMessageBox.confirm(`确定要重新上架资源 "${row.title}" 吗？`, '确认操作', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    ElMessage.success('资源已重新上架')
-    loadResourceList()
-  }).catch(() => {
-    ElMessage.info('已取消操作')
-  })
-}
-
-const handleDownloadResource = (row) => {
-  ElMessage.info(`开始下载: ${row.title}`)
-}
-
-const handleShowStatistics = (row) => {
-  ElMessage.info(`查看统计: ${row.title}`)
-}
-
-const handleDeleteResource = (row) => {
-  ElMessageBox.confirm(`确定要删除资源 "${row.title}" 吗？`, '确认删除', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    ElMessage.success('资源删除成功')
-    loadResourceList()
-  }).catch(() => {
-    ElMessage.info('已取消删除')
-  })
-}
-
-const refreshTable = () => {
-  loadResourceList()
-}
 
 const loadResourceList = async () => {
   loading.value = true
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 500))
-    pagination.total = resourceList.value.length
+    // 构建搜索参数
+    const searchParams = {}
+    
+    // 添加当前用户ID到请求体（管理员后台可能不需要，但为了保持一致性添加）
+    const authStore = useAuthStore()
+    if (authStore.userInfo?.id) {
+      searchParams.userId = authStore.userInfo.id
+    }
+    
+    // 调用API查询所有资源
+    const response = await apiService.resources.findByItem(searchParams)
+    
+    console.log('API响应数据:', response) // 调试日志
+    
+    if (response && response.success && response.data) {
+      // 根据控制台日志，数据在response.data中，可能是response.data.data或response.data
+      const data = response.data.data || response.data
+      if (Array.isArray(data)) {
+        resourceList.value = data
+        pagination.total = data.length
+        console.log('成功加载资源列表，数量:', data.length)
+      } else {
+        console.log('API返回的数据不是数组:', data)
+        resourceList.value = []
+        pagination.total = 0
+      }
+    } else {
+      ElMessage.error('获取资源列表失败')
+      resourceList.value = []
+      pagination.total = 0
+    }
   } catch (error) {
     console.error('加载资源列表失败:', error)
-    ElMessage.error('数据加载失败')
+    ElMessage.error('加载资源列表失败')
+    resourceList.value = []
+    pagination.total = 0
   } finally {
     loading.value = false
   }
 }
 
-const getCategoryName = (categoryId) => {
-  const category = categories.value.find(cat => cat.id === categoryId)
-  return category ? category.name : '未知分类'
-}
+
 
 const getFileTypeLabel = (fileType) => {
   const labels = {
@@ -752,6 +470,12 @@ const formatDate = (dateString) => {
   return date.toLocaleString('zh-CN')
 }
 
+const formatTime = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-CN')
+}
+
 onMounted(() => {
   loadResourceList()
 })
@@ -783,85 +507,63 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.search-card {
-  margin-bottom: 20px;
-}
 
-.search-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-}
-
-.stats-row {
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  transition: transform 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-}
-
-.stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 15px;
-  font-size: 24px;
-}
-
-.total-icon {
-  background-color: #e6f7ff;
-  color: #1890ff;
-}
-
-.pending-icon {
-  background-color: #fff7e6;
-  color: #fa8c16;
-}
-
-.published-icon {
-  background-color: #f6ffed;
-  color: #52c41a;
-}
-
-.download-icon {
-  background-color: #f9f0ff;
-  color: #722ed1;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 4px;
-}
 
 .action-bar {
   margin-bottom: 20px;
   display: flex;
   gap: 10px;
+}
+
+/* 编辑对话框样式 */
+.preview-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.preview-section h4 {
+  margin: 0 0 10px 0;
+  color: #303133;
+  font-size: 16px;
+}
+
+.image-preview {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+.preview-image {
+  max-width: 200px;
+  max-height: 150px;
+  border-radius: 4px;
+  border: 1px solid #dcdfe6;
+}
+
+.preview-info {
+  flex: 1;
+}
+
+.preview-info p {
+  margin: 0 0 10px 0;
+  color: #606266;
+  font-size: 14px;
+}
+
+.detail-section {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.detail-section h4 {
+  margin: 0 0 15px 0;
+  color: #303133;
+  font-size: 16px;
 }
 
 .table-header {
@@ -877,9 +579,9 @@ onMounted(() => {
 }
 
 .resource-cover {
-  width: 60px;
-  height: 60px;
-  border-radius: 6px;
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
   overflow: hidden;
   background-color: #f5f7fa;
   display: flex;
@@ -889,7 +591,7 @@ onMounted(() => {
 
 .cover-placeholder {
   color: #c0c4cc;
-  font-size: 24px;
+  font-size: 20px;
 }
 
 .resource-details {

@@ -7,6 +7,8 @@
       </el-breadcrumb>
     </div>
 
+
+
     <div class="profile-container">
       <!-- 左侧个人信息卡片 -->
       <div class="profile-sidebar">
@@ -98,51 +100,23 @@
 
       <!-- 右侧内容区域 -->
       <div class="profile-content">
-        <!-- 管理员界面 -->
-        <div v-if="userInfo.role === 'admin'" class="admin-dashboard">
-          <h2 class="admin-title">管理员控制台</h2>
-          <div class="admin-grid">
-            <div class="admin-item">
-              <el-card class="admin-card" shadow="hover">
-                <div class="admin-icon">
-                  <el-icon><User /></el-icon>
-                </div>
-                <h3>用户管理</h3>
-                <p>管理平台用户账户和权限</p>
-                <el-button type="primary" size="small">进入管理</el-button>
-              </el-card>
+        <!-- 管理员仪表盘入口 -->
+        <div v-if="userInfo.role === 'admin'" class="admin-dashboard-entry">
+          <el-card class="dashboard-card" shadow="hover">
+            <div class="dashboard-content">
+              <div class="dashboard-icon">
+                <el-icon><DataAnalysis /></el-icon>
+              </div>
+              <div class="dashboard-info">
+                <h2>管理员仪表盘</h2>
+                <p>查看系统数据统计、用户分析和管理平台运营情况</p>
+                <el-button type="primary" size="large" @click="navigateToDashboard">
+                  <el-icon><TrendCharts /></el-icon>
+                  进入仪表盘
+                </el-button>
+              </div>
             </div>
-            <div class="admin-item">
-              <el-card class="admin-card" shadow="hover">
-                <div class="admin-icon">
-                  <el-icon><Document /></el-icon>
-                </div>
-                <h3>内容审核</h3>
-                <p>审核用户发布的提问和资源</p>
-                <el-button type="primary" size="small">进入审核</el-button>
-              </el-card>
-            </div>
-            <div class="admin-item">
-              <el-card class="admin-card" shadow="hover">
-                <div class="admin-icon">
-                  <el-icon><DataAnalysis /></el-icon>
-                </div>
-                <h3>数据统计</h3>
-                <p>查看平台运营数据和分析</p>
-                <el-button type="primary" size="small">查看统计</el-button>
-              </el-card>
-            </div>
-            <div class="admin-item">
-              <el-card class="admin-card" shadow="hover">
-                <div class="admin-icon">
-                  <el-icon><Setting /></el-icon>
-                </div>
-                <h3>系统设置</h3>
-                <p>配置平台参数和功能设置</p>
-                <el-button type="primary" size="small">系统设置</el-button>
-              </el-card>
-            </div>
-          </div>
+          </el-card>
         </div>
         
         <!-- 教师用户界面 -->
@@ -365,6 +339,14 @@
                       <router-link :to="`/questions/${question.id}`">
                         {{ question.title || question.questionTitle || '无标题' }}
                       </router-link>
+                      <el-tag 
+                        v-if="isQuestionControlled(question.id)" 
+                        type="danger" 
+                        size="small"
+                        style="margin-left: 8px;"
+                      >
+                        已管控
+                      </el-tag>
                     </h4>
                     <p class="question-description">{{ question.description || question.content || '无描述' }}</p>
                     <div class="question-meta">
@@ -380,16 +362,40 @@
                         <el-icon><Reading /></el-icon>
                         {{ question.classBelong || '未分类' }}
                       </span>
-                      <span class="question-solved">
-                        <el-icon><SuccessFilled /></el-icon>
-                        {{ question.isSolved === 1 ? '已解决' : '未解决' }}
-                      </span>
+
                     </div>
                   </div>
                   <div class="question-actions">
-                    <el-button size="small" @click="editQuestion(question)">编辑</el-button>
-                    <el-button size="small" type="danger" @click="deleteQuestion(question)">
+                    <el-button 
+                      size="small" 
+                      @click="editQuestion(question)"
+                      :disabled="isQuestionControlled(question.id)"
+                    >
+                      编辑
+                    </el-button>
+                    <el-button 
+                      size="small" 
+                      type="danger" 
+                      @click="deleteQuestion(question)"
+                      :disabled="isQuestionControlled(question.id)"
+                    >
                       删除
+                    </el-button>
+                    <el-button 
+                      size="small" 
+                      type="primary" 
+                      @click="viewAnswers(question.id)"
+                      v-if="hasAnswers(question.id)"
+                      class="view-answers-btn"
+                      :disabled="isQuestionControlled(question.id)"
+                    >
+                      查看回答
+                      <el-badge 
+                        v-if="!viewedQuestions.has(question.id)" 
+                        :value="unreadAnswerCount > 0 ? '新' : ''" 
+                        type="danger" 
+                        class="answer-badge"
+                      />
                     </el-button>
                   </div>
                 </div>
@@ -403,54 +409,7 @@
             </div>
           </el-tab-pane>
 
-          <!-- 我的回答 -->
-          <el-tab-pane label="我的回答" name="answers">
-            <div class="tab-content">
-              <div class="content-header">
-                <h3>我的回答</h3>
-              </div>
-              
-              <div class="answers-list">
-                <div 
-                  v-for="answer in userAnswers" 
-                  :key="answer.id"
-                  class="answer-item"
-                >
-                  <div class="answer-question">
-                    <h4 class="question-title">
-                      <router-link :to="`/questions/${answer.questionId}`">
-                        {{ answer.questionTitle }}
-                      </router-link>
-                    </h4>
-                  </div>
-                  <div class="answer-content">
-                    <p class="answer-text">{{ answer.content }}</p>
-                    <div class="answer-meta">
-                      <span class="answer-time">{{ formatTime(answer.createTime) }}</span>
-                      <span class="answer-votes">
-                        <el-icon><CaretTop /></el-icon>
-                        {{ answer.upvotes }} 赞同
-                      </span>
-                      <span class="answer-accepted" v-if="answer.isAccepted">
-                        <el-icon><SuccessFilled /></el-icon>
-                        已采纳
-                      </span>
-                    </div>
-                  </div>
-                  <div class="answer-actions">
-                    <el-button size="small" @click="editAnswer(answer)">编辑</el-button>
-                    <el-button size="small" type="danger" @click="deleteAnswer(answer)">
-                      删除
-                    </el-button>
-                  </div>
-                </div>
-                
-                <div v-if="userAnswers.length === 0" class="no-data">
-                  <el-empty description="暂无回答记录" />
-                </div>
-              </div>
-            </div>
-          </el-tab-pane>
+
 
           <!-- 我的资源 -->
           <el-tab-pane label="我的资源" name="resources">
@@ -621,6 +580,28 @@
             placeholder="请确认密码" 
             show-password 
           />
+        </el-form-item>
+
+        <el-form-item label="课程选择" prop="classesChoose">
+          <el-select 
+            v-model="settingsForm.classesChoose" 
+            placeholder="请选择课程" 
+            clearable
+            filterable
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            :loading="loadingCourses"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="course in courseOptions"
+              :key="course.value"
+              :label="course.label"
+              :value="course.value"
+            />
+          </el-select>
+          <div class="form-tip">选择您感兴趣的课程（可多选，多个课程以逗号分隔存储）</div>
         </el-form-item>
       </el-form>
 
@@ -963,6 +944,109 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 回答查看对话框 -->
+    <el-dialog
+      v-model="viewAnswersDialogVisible"
+      :title="currentQuestionTitle ? '问题回答：' + currentQuestionTitle : '问题回答'"
+      width="900px"
+      center
+      :before-close="handleCloseViewAnswersDialog"
+    >
+      <div class="answers-view-container" v-loading="loadingAnswers">
+        <!-- 问题信息 -->
+        <div class="question-info-section">
+          <div class="question-header">
+            <h3 class="question-title">{{ currentQuestionTitle }}</h3>
+            <el-tag v-if="questionAnswers.length > 0" type="success" size="small">
+              {{ questionAnswers.length }} 个回答
+            </el-tag>
+          </div>
+          <div class="question-content">
+            <p>{{ currentQuestionContent }}</p>
+          </div>
+        </div>
+        
+        <!-- 回答列表 -->
+        <div class="answers-section">
+          <div 
+            v-for="answer in questionAnswers" 
+            :key="answer.id"
+            class="answer-card"
+          >
+            <!-- 回答头部 -->
+            <div class="answer-header">
+              <div class="author-info">
+                <el-avatar :size="40" :src="answer.authorAvatar || '/default-avatar.png'" />
+                <div class="author-details">
+                  <span class="author-name">{{ answer.authorName || '匿名用户' }}</span>
+                  <span class="author-title" v-if="answer.authorTitle">{{ answer.authorTitle }}</span>
+                </div>
+              </div>
+              <div class="answer-meta">
+                <span class="answer-time">{{ formatTime(answer.createTime) }}</span>
+                <div class="answer-stats">
+                  <span class="answer-votes">
+                    <el-icon><CaretTop /></el-icon>
+                    {{ answer.upvotes || 0 }} 赞同
+                  </span>
+                  <el-tag v-if="answer.isAccepted" type="success" size="small" class="accepted-tag">
+                    <el-icon><SuccessFilled /></el-icon>
+                    已采纳
+                  </el-tag>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 回答内容 -->
+            <div class="answer-content">
+              <div class="answer-text">
+                <p>{{ answer.content }}</p>
+              </div>
+              
+              <!-- 附件预览 -->
+              <div v-if="answer.fileUrl" class="answer-attachment">
+                <div class="attachment-header">
+                  <el-icon><Document /></el-icon>
+                  <span class="attachment-title">附件</span>
+                </div>
+                <div class="attachment-preview">
+                  <el-image
+                    v-if="isImageFile(answer.fileUrl)"
+                    :src="answer.fileUrl"
+                    :preview-src-list="[answer.fileUrl]"
+                    fit="cover"
+                    class="attachment-image"
+                  >
+                    <template #error>
+                      <div class="image-error">图片加载失败</div>
+                    </template>
+                  </el-image>
+                  
+                  <div v-else class="file-info">
+                    <el-icon><Document /></el-icon>
+                    <span class="file-name">{{ getFileNameFromUrl(answer.fileUrl) }}</span>
+                    <el-button type="primary" size="small" @click="downloadAttachment(answer.fileUrl)">
+                      下载
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="questionAnswers.length === 0" class="no-answers">
+            <el-empty description="暂无回答" />
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="handleCloseViewAnswersDialog">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -973,6 +1057,7 @@
  import { useResourcesStore } from '@/stores/resources'
  import apiService from '@/services/api'
  import { ElMessage, ElMessageBox } from 'element-plus'
+ import { eventBus } from '@/utils/eventBus'
  import { 
    Setting, Edit, Location, Message, Calendar, 
    QuestionFilled, ChatDotRound, Document, 
@@ -1103,8 +1188,33 @@
    phonenumber: '',
    password: '',
    confirmPassword: '',
-   avatar: ''
+   avatar: '',
+   classesChoose: [] // 课程选择，数组类型，支持多选
  })
+
+ // 课程选项
+ const courseOptions = ref([])
+
+ // 获取课程数据
+ const loadCourseData = async () => {
+   loadingCourses.value = true
+   try {
+     const response = await apiService.courses.list()
+     if (response.success && response.data?.code === 1) {
+       courseOptions.value = response.data.data.map(course => ({
+         label: course.title,
+         value: course.title
+       }))
+     } else {
+       ElMessage.error(response.data?.msg || '获取课程列表失败')
+     }
+   } catch (error) {
+     ElMessage.error('网络错误，请稍后重试')
+     console.error('加载课程数据失败:', error)
+   } finally {
+     loadingCourses.value = false
+   }
+ }
 
  // 表单验证规则
  const settingsRules = ref({
@@ -1160,6 +1270,20 @@
  // 新上传的文件URL（回答附件）
  const newAnswerFileUrl = ref('')
  
+ // 回答查看相关变量
+ const viewAnswersDialogVisible = ref(false)
+ const questionAnswers = ref([])
+ const currentQuestionTitle = ref('')
+ const currentQuestionContent = ref('')
+ const currentQuestionId = ref('')
+ const questionHasAnswers = ref({}) // 存储每个问题是否有回答的映射
+ const loadingAnswers = ref(false)
+ 
+ // 新回答提示相关变量
+ const unreadAnswerCount = ref(0)
+ const viewedQuestions = ref(new Set()) // 已查看的问题ID集合
+ const answerAuthors = ref({}) // 存储回答者信息的映射
+ 
  // 回答表单验证规则
  const answerRules = ref({
    content: [
@@ -1213,6 +1337,17 @@
    console.error('附件上传失败:', error)
    ElMessage.error('附件上传失败，请重试')
  }
+
+// 判断问题是否被管控
+const isQuestionControlled = (questionId) => {
+  try {
+    const controlStates = JSON.parse(localStorage.getItem('questionControlStates') || '{}')
+    return controlStates[questionId] || false
+  } catch (error) {
+    console.error('检查管控状态失败:', error)
+    return false
+  }
+}
  
  // 下载回答当前附件
  const downloadAnswerCurrentFile = () => {
@@ -1532,6 +1667,11 @@
 
  const uploadResource = () => {
    router.push('/resources/upload')
+ }
+
+ // 导航到管理员仪表盘
+ const navigateToDashboard = () => {
+   router.push('/admin')
  }
 
  // 内容操作方法
@@ -1945,6 +2085,178 @@
    handleQuestionQuery()
  }
 
+ // 检查问题是否有回答
+ const hasAnswers = (questionId) => {
+   return questionHasAnswers.value[questionId] === true
+ }
+
+ // 查看问题回答
+ const viewAnswers = async (questionId) => {
+   try {
+     currentQuestionId.value = questionId
+     loadingAnswers.value = true
+     
+     // 获取问题详情
+     const questionResponse = await fetch(`/api/v1/question/${questionId}`)
+     if (questionResponse.ok) {
+       const questionResult = await questionResponse.json()
+       if (questionResult.code === 1 && questionResult.data) {
+         currentQuestionTitle.value = questionResult.data.title || questionResult.data.questionTitle || '未命名问题'
+         currentQuestionContent.value = questionResult.data.content || questionResult.data.questionContent || '暂无问题内容'
+       }
+     }
+     
+     // 调用GET /api/v1/answer/findAnswersByQuestionId/{questionId}接口获取回答
+     const response = await fetch(`/api/v1/answer/findAnswersByQuestionId/${questionId}`)
+     
+     if (!response.ok) {
+       throw new Error(`获取回答失败! status: ${response.status}`)
+     }
+     
+     const result = await response.json()
+     console.log('问题回答查询响应:', result)
+     
+     if (result.code === 1 && result.data) {
+       let answersData = []
+       
+       // 根据API响应结构处理数据
+       if (Array.isArray(result.data)) {
+         // 如果data是数组，说明是回答列表
+         answersData = result.data
+       } else if (result.data.answers && Array.isArray(result.data.answers)) {
+         // 如果data是对象且包含answers数组，说明是问题详情包含回答
+         answersData = result.data.answers
+       } else if (result.data.id && result.data.content) {
+         // 如果data是单个回答对象（包含id和content字段）
+         console.log('API返回的是单个回答对象')
+         answersData = [result.data]
+       } else {
+         // 其他情况，视为无回答
+         answersData = []
+         ElMessage.warning('该问题暂无回答')
+       }
+       
+       // 获取回答者信息
+       const enrichedAnswers = await Promise.all(
+         answersData.map(async (answer) => {
+           let authorName = '匿名用户'
+           let authorAvatar = ''
+           let authorTitle = ''
+           
+           // 根据authorId获取回答者信息
+          if (answer.authorId) {
+            try {
+              // 使用正确的API地址获取用户信息
+              const userResponse = await fetch(`/api/v1/user/findInfo/${answer.authorId}`)
+              if (userResponse.ok) {
+                const userResult = await userResponse.json()
+                if (userResult.code === 1 && userResult.data) {
+                  authorName = userResult.data.name || userResult.data.username || '匿名用户'
+                  authorAvatar = userResult.data.avatar || userResult.data.imageUrl || ''
+                  
+                  // 如果是教师，尝试获取教师信息
+                  if (userResult.data.role === 'teacher') {
+                    try {
+                      const teacherResponse = await fetch(`/api/v1/teacher/findInfo/${answer.authorId}`)
+                      if (teacherResponse.ok) {
+                        const teacherResult = await teacherResponse.json()
+                        if (teacherResult.code === 1 && teacherResult.data) {
+                          authorTitle = teacherResult.data.title || '教师'
+                        }
+                      }
+                    } catch (teacherError) {
+                      console.warn('获取教师信息失败:', teacherError)
+                    }
+                  }
+                }
+              }
+            } catch (userError) {
+              console.warn('获取用户信息失败:', userError)
+            }
+          }
+           
+           return {
+             id: answer.id,
+             content: answer.content || '',
+             authorName: answer.authorName || answer.author || authorName,
+             authorAvatar: answer.authorAvatar || authorAvatar,
+             authorTitle: authorTitle,
+             createTime: answer.createTime || answer.createdAt,
+             upvotes: answer.upvotes || 0,
+             isAccepted: answer.isAccepted || false,
+             fileUrl: answer.fileUrl || ''
+           }
+         })
+       )
+       
+       questionAnswers.value = enrichedAnswers
+       
+       // 标记问题为已读
+       if (!viewedQuestions.value.has(questionId)) {
+         viewedQuestions.value.add(questionId)
+         // 更新新回答计数
+         unreadAnswerCount.value = Math.max(0, unreadAnswerCount.value - 1)
+         console.log(`问题 ${questionId} 已标记为已读，当前未读计数: ${unreadAnswerCount.value}`)
+         
+         // 触发新回答计数变化事件，通知AppHeader组件
+         eventBus.emit('updateNewAnswerCount', unreadAnswerCount.value)
+       }
+       
+       // 显示回答查看对话框
+       viewAnswersDialogVisible.value = true
+     } else {
+       ElMessage.warning('该问题暂无回答')
+       questionAnswers.value = []
+     }
+   } catch (error) {
+     console.error('查看回答失败:', error)
+     ElMessage.error('获取回答失败，请重试')
+     questionAnswers.value = []
+   } finally {
+     loadingAnswers.value = false
+   }
+ }
+
+ // 关闭回答查看对话框
+ const handleCloseViewAnswersDialog = () => {
+   viewAnswersDialogVisible.value = false
+   questionAnswers.value = []
+   currentQuestionTitle.value = ''
+   currentQuestionContent.value = ''
+   currentQuestionId.value = ''
+ }
+
+ // 检查文件是否为图片
+ const isImageFile = (fileUrl) => {
+   if (!fileUrl) return false
+   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+   return imageExtensions.some(ext => fileUrl.toLowerCase().includes(ext))
+ }
+
+ // 从URL中获取文件名
+ const getFileNameFromUrl = (url) => {
+   if (!url) return '未知文件'
+   try {
+     const urlObj = new URL(url)
+     const pathname = urlObj.pathname
+     return pathname.split('/').pop() || '未知文件'
+   } catch {
+     return url.split('/').pop() || '未知文件'
+   }
+ }
+
+ // 下载附件
+ const downloadAttachment = (fileUrl) => {
+   if (fileUrl) {
+     const link = document.createElement('a')
+     link.href = fileUrl
+     link.download = getFileNameFromUrl(fileUrl)
+     link.click()
+   } else {
+     ElMessage.warning('没有可下载的附件')
+   }
+ }
+
  // 加载用户提问数据（默认查询当前用户的提问）
  const loadUserQuestions = async () => {
    loadingQuestions.value = true
@@ -1963,6 +2275,49 @@
      // 与loadUserResources保持一致的处理逻辑
      if (response.success && response.data?.code === 1) {
        userQuestions.value = response.data.data || []
+       
+       console.log('加载到的问题列表:', userQuestions.value)
+       
+       // 检查每个问题是否有回答，并计算新回答数量
+       let newAnswerCount = 0
+       for (const question of userQuestions.value) {
+         try {
+           console.log(`检查问题 ${question.id} 的回答...`)
+           const answerResponse = await fetch(`/api/v1/answer/findAnswersByQuestionId/${question.id}`)
+           if (answerResponse.ok) {
+             const answerResult = await answerResponse.json()
+             console.log(`问题 ${question.id} 的回答检查结果:`, answerResult)
+             
+             const hasAnswers = answerResult.code === 1 && answerResult.data && (
+               Array.isArray(answerResult.data) ? answerResult.data.length > 0 : 
+               (answerResult.data.id && answerResult.data.content) ? true : // 单个回答对象
+               Object.keys(answerResult.data).length > 0
+             )
+             
+             questionHasAnswers.value[question.id] = hasAnswers
+             console.log(`问题 ${question.id} 是否有回答:`, questionHasAnswers.value[question.id])
+             
+             // 如果有回答且问题未被查看过，则计入新回答
+             if (hasAnswers && !viewedQuestions.value.has(question.id)) {
+               newAnswerCount++
+             }
+           } else {
+             console.warn(`问题 ${question.id} 的回答检查失败，状态码:`, answerResponse.status)
+             questionHasAnswers.value[question.id] = false
+           }
+         } catch (error) {
+           console.error(`检查问题${question.id}的回答失败:`, error)
+           questionHasAnswers.value[question.id] = false
+         }
+       }
+       
+       // 更新新回答计数
+       unreadAnswerCount.value = newAnswerCount
+       console.log('所有问题的回答检查结果:', questionHasAnswers.value)
+       console.log('新回答计数:', unreadAnswerCount.value)
+       
+       // 触发新回答计数变化事件，通知AppHeader组件
+       eventBus.emit('updateNewAnswerCount', unreadAnswerCount.value)
      } else {
        console.warn('加载我的提问失败，使用默认数据')
        // 保持默认的模拟数据
@@ -1981,6 +2336,11 @@
    try {
      // 构建搜索参数，套用资源中心的查询功能
      const searchParams = {}
+     
+     // 添加当前用户ID到请求体
+     if (authStore.userInfo?.id) {
+       searchParams.userId = authStore.userInfo.id
+     }
      
      // 默认包含当前用户的username作为uploaderName字段
      if (authStore.userInfo?.username) {
@@ -2033,6 +2393,12 @@
    try {
      // 默认查询当前用户的资源
      const searchParams = {}
+     
+     // 添加当前用户ID到请求体
+     if (authStore.userInfo?.id) {
+       searchParams.userId = authStore.userInfo.id
+     }
+     
      if (authStore.userInfo?.username) {
        searchParams.uploaderName = authStore.userInfo.username
      }
@@ -2081,13 +2447,21 @@
          phonenumber: result.data.phonenumber || '',
          password: '',
          confirmPassword: '',
-         avatar: result.data.imageUrl || ''
+         avatar: result.data.imageUrl || '',
+         classesChoose: result.data.classesChoose ? 
+                       (typeof result.data.classesChoose === 'string' ? 
+                         result.data.classesChoose.split(',').filter(item => item.trim()) : 
+                         Array.isArray(result.data.classesChoose) ? result.data.classesChoose : []) 
+                       : [] // 将逗号分隔的字符串转换为数组
        }
        
        // 更新用户信息显示
        userInfo.value.avatar = result.data.imageUrl || ''
        userInfo.value.username = result.data.username || ''
        userInfo.value.email = result.data.email || ''
+       
+       // 加载课程数据
+       await loadCourseData()
        
        settingsDialogVisible.value = true
      } else {
@@ -2169,7 +2543,10 @@
        id: authStore.userInfo.id,
        username: settingsForm.value.username,
        email: settingsForm.value.email,
-       phonenumber: settingsForm.value.phonenumber
+       phonenumber: settingsForm.value.phonenumber,
+       classesChoose: Array.isArray(settingsForm.value.classesChoose) ? 
+                     settingsForm.value.classesChoose.join(',') : // 将数组转换为逗号分隔的字符串
+                     (settingsForm.value.classesChoose ? settingsForm.value.classesChoose.toString() : '') // 处理其他类型
      }
 
      // 如果有密码，添加密码字段
@@ -2525,7 +2902,10 @@
    }
  }
 
- // 加载用户数据
+ // 页面加载时初始化数据
+ onMounted(async () => {
+   await loadUserData()
+ })
 
  // 重新加载活动数据
  const reloadActivities = async () => {
@@ -2645,7 +3025,8 @@
 .profile-container {
   display: flex;
   gap: 20px;
-  align-items: flex-start;
+  align-items: stretch;
+  min-height: calc(100vh - 150px);
 }
 
 .profile-sidebar {
@@ -2658,6 +3039,9 @@
 .profile-content {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .user-card {
@@ -3114,6 +3498,94 @@
   }
 }
 
+/* 管理员仪表盘入口样式 */
+.admin-dashboard-entry {
+  width: 100%;
+  flex: 1; /* 这是flex属性，用于控制元素在容器中的伸缩比例 */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 600px; /* 增加最小高度，让布局更完美 */
+}
+
+.dashboard-card {
+  width: 100%;
+  height: 100%;
+  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.dashboard-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 60px 40px; /* 增加上下内边距，让内容居中 */
+  flex: 1;
+  height: 100%;
+  min-height: 400px; /* 增加最小高度 */
+}
+
+.dashboard-icon {
+  flex-shrink: 0;
+  width: 100px; /* 增大图标容器 */
+  height: 100px; /* 增大图标容器 */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px; /* 增大圆角 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-icon .el-icon {
+  font-size: 48px; /* 增大图标 */
+  color: white;
+}
+
+.dashboard-info {
+  flex: 1;
+}
+
+.dashboard-info h2 {
+  margin: 0 0 20px; /* 增加下边距 */
+  color: #303133;
+  font-size: 32px; /* 增大字体 */
+  font-weight: 700;
+  text-align: center; /* 居中显示 */
+  letter-spacing: 1px; /* 增加字间距 */
+}
+
+.dashboard-info p {
+  margin: 0 0 40px; /* 增加下边距 */
+  color: #606266;
+  font-size: 18px; /* 增大字体 */
+  line-height: 1.8; /* 增加行高 */
+  text-align: center; /* 居中显示 */
+  letter-spacing: 0.5px; /* 增加字间距 */
+}
+
+.dashboard-info .el-button {
+  padding: 20px 48px; /* 进一步增加内边距 */
+  font-size: 20px; /* 进一步增大字体 */
+  font-weight: 600;
+  display: block;
+  margin: 0 auto; /* 居中按钮 */
+  letter-spacing: 1px; /* 进一步增加字间距 */
+  min-width: 200px; /* 设置最小宽度确保文字完整显示 */
+  height: auto; /* 自动高度适应内容 */
+  line-height: 1.5; /* 增加行高 */
+  white-space: nowrap; /* 防止文字换行 */
+}
+
 /* 管理员控制台样式 */
 .admin-dashboard {
   background: #fff;
@@ -3194,5 +3666,246 @@
   .admin-icon {
     font-size: 36px;
   }
+}
+
+/* 新回答提示样式 */
+.new-answers-alert {
+  margin-bottom: 20px;
+}
+
+.answers-alert {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.answers-alert .el-alert__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.answers-alert .el-alert__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* 查看回答按钮样式 */
+.view-answers-btn {
+  position: relative;
+}
+
+.answer-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+}
+
+/* 回答查看对话框样式 */
+.answers-view-container {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0 10px;
+}
+
+.question-info-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
+  border-radius: 8px;
+  border-left: 4px solid #409eff;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.question-title {
+  margin: 0;
+  color: #303133;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.question-content {
+  color: #606266;
+  line-height: 1.6;
+  font-size: 14px;
+  margin: 0;
+}
+
+.answers-section {
+  margin-top: 20px;
+}
+
+.answer-card {
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid #e4e7ed;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.answer-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.answer-card:last-child {
+  margin-bottom: 0;
+}
+
+.answer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.author-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.author-name {
+  font-weight: 600;
+  color: #303133;
+  font-size: 16px;
+}
+
+.author-title {
+  color: #409eff;
+  font-size: 12px;
+  background: rgba(64, 158, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.answer-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.answer-time {
+  color: #909399;
+  font-size: 12px;
+}
+
+.answer-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.answer-votes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #67c23a;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.accepted-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.answer-content {
+  margin-top: 16px;
+}
+
+.answer-text {
+  color: #606266;
+  line-height: 1.8;
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+
+.answer-text p {
+  margin: 0;
+}
+
+.answer-attachment {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.attachment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.attachment-image {
+  max-width: 200px;
+  max-height: 200px;
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e4e7ed;
+  flex: 1;
+}
+
+.file-name {
+  flex: 1;
+  color: #606266;
+  font-size: 14px;
+}
+
+.image-error {
+  padding: 20px;
+  text-align: center;
+  color: #909399;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+
+.no-answers {
+  text-align: center;
+  padding: 60px 0;
+  color: #909399;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>

@@ -189,6 +189,14 @@
                 >
                   热门
                 </el-tag>
+                <!-- 管控状态显示 -->
+                <el-tag 
+                  v-if="isQuestionControlled(question.id)" 
+                  type="danger" 
+                  size="small"
+                >
+                  已管控
+                </el-tag>
               </div>
             </div>
             
@@ -314,6 +322,17 @@ const isQuestionSolved = (isSolved) => {
   return isSolved === true || isSolved === '1' || isSolved === 1
 }
 
+// 判断问题是否被管控
+const isQuestionControlled = (questionId) => {
+  try {
+    const controlStates = JSON.parse(localStorage.getItem('questionControlStates') || '{}')
+    return controlStates[questionId] || false
+  } catch (error) {
+    console.error('检查管控状态失败:', error)
+    return false
+  }
+}
+
 // 通过API获取用户名并更新响应式数据
 const fetchUserName = async (userId) => {
   if (!userId) return
@@ -411,6 +430,11 @@ const askQuestion = () => {
 }
 
 const viewQuestion = (id) => {
+  // 检查问题是否被管控
+  if (isQuestionControlled(id)) {
+    ElMessage.warning('该问题已被管控，无法查看')
+    return
+  }
   router.push(`/questions/${id}`)
 }
 

@@ -41,17 +41,26 @@
               <el-icon><Fire /></el-icon>
               热门
             </el-tag>
+            <!-- 管控状态显示 -->
+            <el-tag 
+              v-if="isQuestionControlled(questionId)" 
+              type="danger" 
+              size="large"
+            >
+              <el-icon><Lock /></el-icon>
+              已管控
+            </el-tag>
           </div>
         </div>
 
-        <div class="question-meta">
-          <div class="author-info">
-            <el-avatar :size="40" :src="question.authorAvatar" />
-            <div class="author-details">
-              <span class="author-name">{{ question.author }}</span>
-              <span class="post-time">{{ formatTime(question.createTime) }}</span>
+        <div class="question-header">
+            <div class="author-info">
+              <el-avatar :size="40" :src="getUserAvatar(question.authorId)" />
+              <div class="author-details">
+                <span class="author-name">{{ getUserName(question.authorId) }}</span>
+                <span class="post-time">{{ formatTime(question.createTime) }}</span>
+              </div>
             </div>
-          </div>
           <div class="stats">
             <span class="views">
               <el-icon><View /></el-icon>
@@ -85,11 +94,15 @@
           <el-button 
             type="primary" 
             @click="showAnswerForm = !showAnswerForm"
+            :disabled="isQuestionControlled(questionId)"
           >
             <el-icon><ChatLineRound /></el-icon>
             回答
           </el-button>
-          <el-button @click="toggleFollow">
+          <el-button 
+            @click="toggleFollow"
+            :disabled="isQuestionControlled(questionId)"
+          >
             <el-icon><Star /></el-icon>
             {{ isFollowing ? '取消关注' : '关注问题' }}
           </el-button>
@@ -97,6 +110,7 @@
             v-if="canEdit" 
             type="warning" 
             @click="editQuestion"
+            :disabled="isQuestionControlled(questionId)"
           >
             <el-icon><Edit /></el-icon>
             编辑
@@ -105,6 +119,7 @@
             v-if="canDelete" 
             type="danger" 
             @click="deleteQuestion"
+            :disabled="isQuestionControlled(questionId)"
           >
             <el-icon><Delete /></el-icon>
             删除
@@ -160,8 +175,8 @@
           >
             <div class="answer-header">
               <div class="answer-author">
-                <el-avatar :size="32" :src="answer.authorAvatar" />
-                <span class="author-name">{{ answer.author }}</span>
+                <el-avatar :size="32" :src="getUserAvatar(answer.authorId)" />
+                <span class="author-name">{{ getUserName(answer.authorId) }}</span>
                 <el-tag v-if="answer.isBest" type="success" size="small">
                   最佳答案
                 </el-tag>
@@ -232,7 +247,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useQuestionsStore } from '@/stores/questions'
 import { 
   Check, Clock, View, ChatDotRound, ChatLineRound, 
-  Star, Edit, Delete, ThumbUp 
+  Star, Edit, Delete, ThumbUp, Lock
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -246,6 +261,13 @@ const loading = ref(true)
 const showAnswerForm = ref(false)
 const submittingAnswer = ref(false)
 const isFollowing = ref(false)
+
+// 用户名称和头像缓存
+const userNameCache = ref({})
+const userAvatarCache = ref({})
+const loadingNames = ref({})
+const userNames = ref({})
+const userAvatars = ref({})
 
 const answerForm = ref({
   content: ''
@@ -282,6 +304,76 @@ const canDeleteAnswer = (answer) => {
   return authStore.userRole === 'admin'
 }
 
+// 判断问题是否被管控
+const isQuestionControlled = (questionId) => {
+  try {
+    const controlStates = JSON.parse(localStorage.getItem('questionControlStates') || '{}')
+    return controlStates[questionId] || false
+  } catch (error) {
+    console.error('检查管控状态失败:', error)
+    return false
+  }
+}
+
+// 通过API获取用户信息并更新响应式数据
+const fetchUserInfo = async (userId) => {
+  if (!userId) return
+  
+  // 如果已经在缓存中，直接返回
+  if (userNameCache.value[userId] && userAvatarCache.value[userId]) {
+    userNames.value[userId] = userNameCache.value[userId]
+    userAvatars.value[userId] = userAvatarCache.value[userId]
+    return
+  }
+  
+  // 如果正在加载中，跳过
+  if (loadingNames.value[userId]) {
+    return
+  }
+  
+  try {
+    loadingNames.value[userId] = true
+    
+    const response = await fetch(`/api/v1/user/findInfo/${userId}`)
+    const result = await response.json()
+    
+    if (result.code === 1 && result.data) {
+      // 缓存用户信息并更新响应式数据
+      userNameCache.value[userId] = result.data.username || result.data.name || `用户${userId}`
+      userAvatarCache.value[userId] = result.data.avatar || result.data.imageUrl || ''
+      userNames.value[userId] = result.data.username || result.data.name || `用户${userId}`
+      userAvatars.value[userId] = result.data.avatar || result.data.imageUrl || ''
+    } else {
+      // API调用失败，使用默认值
+      userNameCache.value[userId] = `用户${userId}`
+      userAvatarCache.value[userId] = ''
+      userNames.value[userId] = `用户${userId}`
+      userAvatars.value[userId] = ''
+    }
+  } catch (error) {
+    console.error(`获取用户${userId}信息失败:`, error)
+    // 出错时使用默认值
+    userNameCache.value[userId] = `用户${userId}`
+    userAvatarCache.value[userId] = ''
+    userNames.value[userId] = `用户${userId}`
+    userAvatars.value[userId] = ''
+  } finally {
+    loadingNames.value[userId] = false
+  }
+}
+
+// 获取用户名的显示函数
+const getUserName = (userId) => {
+  if (!userId) return '未知用户'
+  return userNames.value[userId] || '加载中...'
+}
+
+// 获取用户头像的显示函数
+const getUserAvatar = (userId) => {
+  if (!userId) return ''
+  return userAvatars.value[userId] || ''
+}
+
 const loadQuestion = async () => {
   loading.value = true
   try {
@@ -289,6 +381,20 @@ const loadQuestion = async () => {
     if (result.success) {
       question.value = result.data.question
       answers.value = result.data.answers
+      
+      // 预加载问题作者的用户信息
+      if (question.value && question.value.authorId) {
+        fetchUserInfo(question.value.authorId)
+      }
+      
+      // 预加载所有回答的用户信息
+      if (answers.value && answers.value.length > 0) {
+        answers.value.forEach(answer => {
+          if (answer.authorId) {
+            fetchUserInfo(answer.authorId)
+          }
+        })
+      }
     } else {
       question.value = null
     }

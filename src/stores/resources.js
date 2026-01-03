@@ -24,6 +24,11 @@ export const useResourcesStore = defineStore('resources', () => {
       // 构建请求体，适配新的后端API格式
       const requestBody = {}
       
+      // 添加用户ID到请求体
+      if (params.userId) {
+        requestBody.userId = params.userId
+      }
+      
       if (params.title) {
         requestBody.title = params.title
       }

@@ -174,13 +174,8 @@ const handleLogin = async () => {
       authStore.token = result.data.id
       authStore.user = result.data
       
-      // 根据用户角色跳转到不同页面
-      const userRole = result.data.role
-      if (userRole === 'admin') {
-        router.push('/admin')
-      } else {
-        router.push('/')
-      }
+      // 所有用户登录成功后都跳转到主页
+      router.push('/home')
     } else {
       ElMessage.error(result.msg || '登录失败')
     }

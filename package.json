@@ -8,10 +8,12 @@
   },
   "dependencies": {
     "@tinymce/tinymce-vue": "^6.3.0",
+    "echarts": "^6.0.0",
     "element-plus": "^2.4.4",
     "pinia": "^2.0.33",
     "tinymce": "^8.2.0",
     "vue": "^3.2.38",
+    "vue-echarts": "^8.0.1",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {

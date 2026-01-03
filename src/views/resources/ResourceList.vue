@@ -416,6 +416,11 @@ const loadResources = async () => {
     // 构建搜索参数
     const searchParams = {}
     
+    // 添加当前用户ID到请求体
+    if (authStore.userInfo?.id) {
+      searchParams.userId = authStore.userInfo.id
+    }
+    
     if (searchTitle.value) {
       searchParams.title = searchTitle.value
     }

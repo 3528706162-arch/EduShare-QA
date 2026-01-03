@@ -99,9 +99,6 @@
           </div>
           <h3>资源中心</h3>
           <p>浏览和下载丰富的学习资源，包括课件、笔记、习题等</p>
-          <div class="feature-stats">
-            <span>资源总数：{{ totalStats.resources || '加载中...' }}</span>
-          </div>
         </div>
         
         <div class="feature-card" @click="navigateToQuestions">
@@ -110,9 +107,6 @@
           </div>
           <h3>问答社区</h3>
           <p>与师生互动交流，解决学习难题，分享知识经验</p>
-          <div class="feature-stats">
-            <span>问题总数：{{ totalStats.questions || '加载中...' }}</span>
-          </div>
         </div>
         
         <div class="feature-card" @click="navigateToCourses">
@@ -121,9 +115,6 @@
           </div>
           <h3>课程中心</h3>
           <p>查看课程信息，管理学习进度，参与课程讨论</p>
-          <div class="feature-stats">
-            <span>课程总数：{{ totalStats.courses || '加载中...' }}</span>
-          </div>
         </div>
         
         <div class="feature-card" @click="navigateToProfile">
@@ -132,88 +123,6 @@
           </div>
           <h3>个人中心</h3>
           <p>个性化学习记录，资源收藏，问题追踪，学习进度管理</p>
-          <div class="feature-stats">
-            <span>我的收藏：{{ userStats.collections || '加载中...' }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 热门资源 -->
-    <div class="hot-section">
-      <div class="section-header">
-        <h2 class="section-title">热门资源</h2>
-        <el-link type="primary" :underline="false" @click="navigateToResources">
-          查看全部 <el-icon><ArrowRight /></el-icon>
-        </el-link>
-      </div>
-      
-      <div class="resources-grid">
-        <div 
-          class="resource-card" 
-          v-for="resource in hotResources" 
-          :key="resource.id"
-          @click="viewResource(resource)"
-        >
-          <div class="resource-header">
-            <el-tag :type="getResourceTypeTag(resource.type)" size="small">
-              {{ getResourceTypeText(resource.type) }}
-            </el-tag>
-            <span class="resource-downloads">
-              <el-icon><Download /></el-icon>
-              {{ resource.downloads }}
-            </span>
-          </div>
-          <h4 class="resource-title">{{ resource.title }}</h4>
-          <p class="resource-description">{{ resource.description }}</p>
-          <div class="resource-footer">
-            <span class="resource-author">{{ resource.author }}</span>
-            <span class="resource-time">{{ formatTime(resource.createTime) }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 最新问题 -->
-    <div class="questions-section">
-      <div class="section-header">
-        <h2 class="section-title">最新问题</h2>
-        <el-link type="primary" :underline="false" @click="navigateToQuestions">
-          查看全部 <el-icon><ArrowRight /></el-icon>
-        </el-link>
-      </div>
-      
-      <div class="questions-list">
-        <div 
-          class="question-item" 
-          v-for="question in latestQuestions" 
-          :key="question.id"
-          @click="viewQuestion(question)"
-        >
-          <div class="question-main">
-            <h4 class="question-title">{{ question.title }}</h4>
-            <p class="question-content">{{ question.content }}</p>
-            <div class="question-tags">
-              <el-tag 
-                v-for="tag in question.tags" 
-                :key="tag"
-                size="small"
-                type="info"
-              >
-                {{ tag }}
-              </el-tag>
-            </div>
-          </div>
-          <div class="question-stats">
-            <span class="answer-count">
-              <el-icon><ChatDotSquare /></el-icon>
-              {{ question.answerCount }}
-            </span>
-            <span class="view-count">
-              <el-icon><View /></el-icon>
-              {{ question.viewCount }}
-            </span>
-          </div>
         </div>
       </div>
     </div>
@@ -249,21 +158,70 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useResourcesStore } from '@/stores/resources'
 import { useQuestionsStore } from '@/stores/questions'
-import { formatTime } from '@/utils/helpers'
 import { 
   Collection, 
   ChatDotRound, 
   Reading, 
-  User, 
-  ArrowRight, 
-  Download, 
-  ChatDotSquare, 
-  View,
+  User,
   UserFilled,
   Document,
   DataAnalysis,
   Setting
 } from '@element-plus/icons-vue'
+
+// API调用函数
+const fetchStats = async () => {
+  try {
+    console.log('开始获取统计数据...')
+    
+    const [userCountRes, resourceCountRes, questionCountRes, answerCountRes] = await Promise.all([
+      fetch('/api/v1/report/userCount'),
+      fetch('/api/v1/report/resourceCount'),
+      fetch('/api/v1/report/questionCount'),
+      fetch('/api/v1/report/answerCount')
+    ])
+    
+    console.log('API响应状态:', {
+      userCount: userCountRes.status,
+      resourceCount: resourceCountRes.status,
+      questionCount: questionCountRes.status,
+      answerCount: answerCountRes.status
+    })
+    
+    const userCount = await userCountRes.json()
+    const resourceCount = await resourceCountRes.json()
+    const questionCount = await questionCountRes.json()
+    const answerCount = await answerCountRes.json()
+    
+    console.log('API返回数据:', {
+      userCount,
+      resourceCount,
+      questionCount,
+      answerCount
+    })
+    
+    const result = {
+      users: userCount.data || 0,
+      resources: resourceCount.data || 0,
+      questions: questionCount.data || 0,
+      answers: answerCount.data || 0
+    }
+    
+    console.log('处理后的统计数据:', result)
+    return result
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+    console.error('错误详情:', error.message)
+    
+    // 如果后端接口不可用，使用模拟数据作为临时解决方案
+    return {
+      users: 1256,
+      resources: 890,
+      questions: 3456,
+      answers: 7890
+    }
+  }
+}
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -276,12 +234,6 @@ const questionStats = ref({})
 const courseStats = ref({})
 const userStats = ref({})
 const totalStats = ref({})
-
-// 热门资源
-const hotResources = ref([])
-
-// 最新问题
-const latestQuestions = ref([])
 
 // 导航方法
 const navigateToResources = () => {
@@ -309,78 +261,45 @@ const navigateTo = (routeName) => {
   router.push({ name: routeName })
 }
 
-// 查看资源详情
-const viewResource = (resource) => {
-  router.push(`/resources/${resource.id}`)
-}
-
-// 查看问题详情
-const viewQuestion = (question) => {
-  router.push(`/questions/${question.id}`)
-}
-
-// 获取资源类型标签
-const getResourceTypeTag = (type) => {
-  const typeMap = {
-    'pdf': 'primary',
-    'doc': 'success',
-    'ppt': 'warning',
-    'video': 'danger',
-    'other': 'info'
-  }
-  return typeMap[type] || 'info'
-}
-
-// 获取资源类型文本
-const getResourceTypeText = (type) => {
-  const typeMap = {
-    'pdf': 'PDF',
-    'doc': '文档',
-    'ppt': 'PPT',
-    'video': '视频',
-    'other': '其他'
-  }
-  return typeMap[type] || '其他'
-}
-
 // 加载首页数据
 const loadHomeData = async () => {
   try {
-    // 加载统计数据
-    const [resourcesData, questionsData, coursesData, userData, totalsData] = await Promise.all([
-      resourcesStore.getResourceStats(),
-      questionsStore.getQuestionStats(),
-      // 这里可以调用课程和用户相关的API
-      Promise.resolve({ total: 50 }), // 模拟课程数据
-      Promise.resolve({ collections: 12 }), // 模拟用户数据
-      Promise.resolve({ 
-        users: 1234, 
-        resources: 5678, 
-        questions: 901, 
-        answers: 2345 
-      }) // 模拟总统计数据
-    ])
+    console.log('开始加载首页数据...')
     
-    resourceStats.value = resourcesData
-    questionStats.value = questionsData
-    courseStats.value = coursesData
-    userStats.value = userData
+    // 只调用fetchStats获取统计数据
+    console.log('开始调用fetchStats函数...')
+    const totalsData = await fetchStats()
+    console.log('fetchStats调用完成:', totalsData)
+    
+    // 直接使用fetchStats返回的数据
     totalStats.value = totalsData
     
-    // 加载热门资源
-    const hotRes = await resourcesStore.getHotResources()
-    hotResources.value = hotRes.slice(0, 4) // 只显示4个
+    // 设置课程和用户数据（暂时使用模拟数据）
+    courseStats.value = { total: 50 }
+    userStats.value = { collections: 12 }
     
-    // 加载最新问题
-    const latestQues = await questionsStore.getLatestQuestions()
-    latestQuestions.value = latestQues.slice(0, 5) // 只显示5个
+    console.log('数据赋值完成:', totalStats.value)
+    console.log('totalStats对象内容:', {
+      users: totalStats.value.users,
+      resources: totalStats.value.resources,
+      questions: totalStats.value.questions,
+      answers: totalStats.value.answers
+    })
   } catch (error) {
     console.error('加载首页数据失败:', error)
   }
 }
 
+// 确保无论用户角色如何，统计数据都会被加载
 onMounted(() => {
+  console.log('首页组件已挂载，用户角色:', authStore.userInfo?.role)
+  console.log('是否已认证:', authStore.isAuthenticated)
+  console.log('开始调用loadHomeData函数...')
+  
+  // 无论用户角色如何，都加载统计数据
   loadHomeData()
+  
+  console.log('loadHomeData函数调用完成')
 })
 </script>
 
@@ -527,145 +446,7 @@ onMounted(() => {
   color: #909399;
 }
 
-/* 热门资源 */
-.hot-section {
-  margin: 80px 0;
-}
 
-.resources-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.resource-card {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #f5f5f5;
-}
-
-.resource-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-
-.resource-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.resource-downloads {
-  font-size: 12px;
-  color: #909399;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.resource-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 8px 0;
-  line-height: 1.4;
-}
-
-.resource-description {
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.5;
-  margin: 0 0 16px 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.resource-footer {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #909399;
-}
-
-/* 最新问题 */
-.questions-section {
-  margin: 80px 0;
-}
-
-.questions-list {
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.question-item {
-  padding: 20px;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.question-item:hover {
-  background-color: #f8f9fa;
-}
-
-.question-item:last-child {
-  border-bottom: none;
-}
-
-.question-main {
-  flex: 1;
-}
-
-.question-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 8px 0;
-}
-
-.question-content {
-  font-size: 14px;
-  color: #606266;
-  line-height: 1.5;
-  margin: 0 0 12px 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.question-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.question-stats {
-  display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: #909399;
-  flex-shrink: 0;
-  margin-left: 20px;
-}
-
-.question-stats span {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
 
 /* 统计数据 */
 .stats-section {
@@ -674,6 +455,7 @@ onMounted(() => {
   border-radius: 16px;
   padding: 60px 40px;
   color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .stats-grid {

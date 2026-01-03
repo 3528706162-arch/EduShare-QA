@@ -31,7 +31,7 @@ import { HomeFilled, ArrowLeft, Search } from '@element-plus/icons-vue'
 const router = useRouter()
 
 const goHome = () => {
-  router.push('/')
+  router.push('/home')
 }
 
 const goBack = () => {

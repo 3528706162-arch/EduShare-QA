@@ -8,69 +8,29 @@
     </div>
 
     <div class="dashboard-header">
-      <h1>系统概览</h1>
-      <p>欢迎回来，管理员！这里是系统的整体运行情况概览。</p>
+      <h1>数据统计</h1>
+      <p>欢迎回来，管理员！这里是系统的数据统计和分析。</p>
     </div>
 
-    <!-- 统计卡片 -->
-    <div class="stats-grid">
-      <el-card class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon user-icon">
-            <el-icon><User /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-number">{{ stats.totalUsers }}</div>
-            <div class="stat-label">总用户数</div>
-          </div>
-        </div>
-        <div class="stat-trend">
-          <span class="trend-up">+{{ stats.newUsersToday }} 今日新增</span>
+    <!-- 图表区域 -->
+    <div class="charts-grid">
+      <!-- 用户身份分布饼图 -->
+      <el-card class="chart-card">
+        <template #header>
+          <h3>用户身份分布</h3>
+        </template>
+        <div class="chart-container">
+          <v-chart :option="userRoleChartOption" style="height: 300px;" />
         </div>
       </el-card>
 
-      <el-card class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon question-icon">
-            <el-icon><QuestionFilled /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-number">{{ stats.totalQuestions }}</div>
-            <div class="stat-label">总问题数</div>
-          </div>
-        </div>
-        <div class="stat-trend">
-          <span class="trend-up">+{{ stats.newQuestionsToday }} 今日新增</span>
-        </div>
-      </el-card>
-
-      <el-card class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon resource-icon">
-            <el-icon><Document /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-number">{{ stats.totalResources }}</div>
-            <div class="stat-label">总资源数</div>
-          </div>
-        </div>
-        <div class="stat-trend">
-          <span class="trend-up">+{{ stats.newResourcesToday }} 今日新增</span>
-        </div>
-      </el-card>
-
-      <el-card class="stat-card">
-        <div class="stat-content">
-          <div class="stat-icon answer-icon">
-            <el-icon><ChatDotRound /></el-icon>
-          </div>
-          <div class="stat-info">
-            <div class="stat-number">{{ stats.totalAnswers }}</div>
-            <div class="stat-label">总回答数</div>
-          </div>
-        </div>
-        <div class="stat-trend">
-          <span class="trend-up">+{{ stats.newAnswersToday }} 今日新增</span>
+      <!-- 用户注册时间柱状图 -->
+      <el-card class="chart-card">
+        <template #header>
+          <h3>用户注册趋势</h3>
+        </template>
+        <div class="chart-container">
+          <v-chart :option="userRegisterChartOption" style="height: 300px;" />
         </div>
       </el-card>
     </div>
@@ -110,43 +70,158 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { 
-  User, QuestionFilled, Document, ChatDotRound,
-  Collection, UserFilled
+  Collection, UserFilled, QuestionFilled, Document
 } from '@element-plus/icons-vue'
+import VChart from 'vue-echarts'
+import * as echarts from 'echarts'
 
 const router = useRouter()
 
-// 统计数据
-const stats = reactive({
-  totalUsers: 1256,
-  newUsersToday: 12,
-  totalQuestions: 3456,
-  newQuestionsToday: 23,
-  totalResources: 890,
-  newResourcesToday: 8,
-  totalAnswers: 7890,
-  newAnswersToday: 45
+// 图表配置
+const userRoleChartOption = reactive({
+  tooltip: {
+    trigger: 'item',
+    formatter: '{a} <br/>{b}: {c} ({d}%)'
+  },
+  legend: {
+    orient: 'vertical',
+    left: 'left',
+    data: ['学生', '教师', '管理员']
+  },
+  color: ['#5470c6', '#91cc75', '#fac858'],
+  series: [
+    {
+      name: '用户身份分布',
+      type: 'pie',
+      radius: '50%',
+      data: [
+        { value: 150, name: '学生' },
+        { value: 25, name: '教师' },
+        { value: 5, name: '管理员' }
+      ],
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      },
+      itemStyle: {
+        borderRadius: 8,
+        borderColor: '#fff',
+        borderWidth: 2
+      }
+    }
+  ]
 })
+
+const userRegisterChartOption = reactive({
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: {
+      type: 'shadow'
+    }
+  },
+  xAxis: {
+    type: 'category',
+    data: [],
+    axisLabel: {
+      rotate: 0
+    }
+  },
+  yAxis: {
+    type: 'value'
+  },
+  series: [
+    {
+      name: '注册用户数',
+      type: 'bar',
+      data: [],
+      itemStyle: {
+        color: '#409EFF',
+        borderRadius: [4, 4, 0, 0]
+      }
+    }
+  ]
+})
+
+// API调用函数
+const fetchUserRoleStats = async () => {
+  try {
+    const response = await fetch('/api/v1/report/identityCount')
+    const data = await response.json()
+    if (data.code === 1 && data.data) {
+      const roleStats = { student: 0, teacher: 0, admin: 0 }
+      data.data.forEach(item => {
+        if (item.role === 'student') roleStats.student = item.count
+        if (item.role === 'teacher') roleStats.teacher = item.count
+        if (item.role === 'admin') roleStats.admin = item.count
+      })
+      return roleStats
+    }
+    return { student: 0, teacher: 0, admin: 0 }
+  } catch (error) {
+    console.error('获取用户身份统计数据失败:', error)
+    return { student: 0, teacher: 0, admin: 0 }
+  }
+}
+
+const fetchUserRegisterStats = async () => {
+  try {
+    const response = await fetch('/api/v1/report/userCountByTime')
+    const data = await response.json()
+    if (data.code === 1 && data.data) {
+      // 直接使用API返回的日期数据，显示完整日期
+      const dates = []
+      const counts = []
+      data.data.forEach(item => {
+        // 格式化日期，显示完整日期
+        const date = new Date(item.date)
+        const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+        dates.push(formattedDate)
+        counts.push(item.count)
+      })
+      return { dates, counts }
+    }
+    return { dates: [], counts: [] }
+  } catch (error) {
+    console.error('获取用户注册统计数据失败:', error)
+    return { dates: [], counts: [] }
+  }
+}
 
 // 导航到管理页面
 const navigateTo = (routeName) => {
   router.push({ name: routeName })
 }
 
-// 模拟加载数据
-const loadDashboardData = async () => {
+// 加载图表数据
+const loadChartData = async () => {
   try {
-    // 这里可以调用API获取真实数据
-    ElMessage.success('仪表板数据加载完成')
+    // 获取用户身份统计数据
+    const roleStats = await fetchUserRoleStats()
+    userRoleChartOption.series[0].data = [
+      { value: roleStats.student, name: '学生' },
+      { value: roleStats.teacher, name: '教师' },
+      { value: roleStats.admin, name: '管理员' }
+    ]
+    
+    // 获取用户注册统计数据
+    const registerStats = await fetchUserRegisterStats()
+    userRegisterChartOption.xAxis.data = registerStats.dates
+    userRegisterChartOption.series[0].data = registerStats.counts
+    
+    ElMessage.success('图表数据加载完成')
   } catch (error) {
-    console.error('加载仪表板数据失败:', error)
-    ElMessage.error('数据加载失败')
+    console.error('加载图表数据失败:', error)
+    ElMessage.error('图表数据加载失败')
   }
 }
 
 onMounted(() => {
-  loadDashboardData()
+  loadChartData()
 })
 </script>
 
@@ -176,81 +251,23 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.stats-grid {
+.charts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
   margin-bottom: 30px;
 }
 
-.stat-card {
+.chart-card {
   transition: transform 0.3s ease;
 }
 
-.stat-card:hover {
+.chart-card:hover {
   transform: translateY(-2px);
 }
 
-.stat-content {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.stat-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 15px;
-}
-
-.user-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.question-icon {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.resource-icon {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-}
-
-.answer-icon {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-}
-
-.stat-icon .el-icon {
-  font-size: 24px;
-  color: white;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 28px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #909399;
-}
-
-.stat-trend {
-  text-align: right;
-}
-
-.trend-up {
-  color: #67c23a;
-  font-size: 12px;
+.chart-container {
+  width: 100%;
 }
 
 .quick-actions {
@@ -284,7 +301,7 @@ onMounted(() => {
     padding: 16px;
   }
   
-  .stats-grid {
+  .charts-grid {
     grid-template-columns: 1fr;
   }
   

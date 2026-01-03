@@ -3,7 +3,7 @@
     <div class="header-content">
       <!-- Logo和标题 -->
       <div class="header-left">
-        <router-link to="/" class="logo-link">
+        <router-link to="/home" class="logo-link">
           <h1 class="logo-text">EduShare QA</h1>
           <span class="logo-subtitle">大学生线上学习资源共享与问答系统</span>
         </router-link>
@@ -17,7 +17,7 @@
           class="nav-menu"
           @select="handleMenuSelect"
         >
-          <el-menu-item index="/">首页</el-menu-item>
+          <el-menu-item index="/home">首页</el-menu-item>
           <el-menu-item index="/resources">资源中心</el-menu-item>
           <el-menu-item index="/questions">问答社区</el-menu-item>
           <el-menu-item v-if="userRole === 'admin'" index="/admin">管理后台</el-menu-item>
@@ -40,28 +40,32 @@
           </template>
         </el-input>
 
-        <!-- 通知 -->
+        <!-- 通知提示 -->
         <el-dropdown trigger="click" class="notification-dropdown">
-          <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="notification-badge">
+          <el-badge :value="notificationCount" :hidden="notificationCount === 0" class="notification-badge">
             <el-button circle>
               <el-icon><Bell /></el-icon>
             </el-button>
           </el-badge>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item v-if="notifications.length === 0">暂无通知</el-dropdown-item>
-              <el-dropdown-item 
-                v-for="notification in notifications" 
-                :key="notification.id"
-                @click="handleNotificationClick(notification)"
-              >
+              <!-- 教师用户的未回答问题通知 -->
+              <el-dropdown-item v-if="authStore.hasPermission(['teacher']) && unansweredQuestionsCount > 0" @click="handleUnansweredQuestionsClick">
                 <div class="notification-item">
-                  <div class="notification-title">{{ notification.title }}</div>
-                  <div class="notification-time">{{ formatTime(notification.createdAt) }}</div>
+                  <div class="notification-title">您有 {{ unansweredQuestionsCount }} 条待回答问题</div>
+                  <div class="notification-time">点击回答问题</div>
                 </div>
               </el-dropdown-item>
-              <el-dropdown-item divided>
-                <el-button type="text" @click="markAllAsRead">全部标记为已读</el-button>
+              <!-- 其他用户的新回答通知 -->
+              <el-dropdown-item v-else-if="newAnswerCount > 0">
+                <div class="notification-item">
+                  <div class="notification-title">您有 {{ newAnswerCount }} 条新回答</div>
+                  <div class="notification-time">点击查看详情</div>
+                </div>
+              </el-dropdown-item>
+              <el-dropdown-item v-else>暂无新通知</el-dropdown-item>
+              <el-dropdown-item divided @click="navigateToProfile">
+                <el-button type="text">前往个人中心查看</el-button>
               </el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -103,12 +107,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Bell, User, Upload, QuestionFilled, SwitchButton, ArrowDown } from '@element-plus/icons-vue'
 import { formatDateTime } from '@/utils/helpers'
+import { eventBus } from '@/utils/eventBus'
 
 const router = useRouter()
 const route = useRoute()
@@ -117,6 +122,20 @@ const authStore = useAuthStore()
 const searchKeyword = ref('')
 const notifications = ref([])
 const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length)
+
+// 新回答计数
+const newAnswerCount = ref(0)
+
+// 通知总数计算
+const notificationCount = computed(() => {
+  if (authStore.hasPermission(['teacher'])) {
+    // 教师用户显示待回答问题数量
+    return unansweredQuestionsCount.value
+  } else {
+    // 其他用户显示新回答数量
+    return newAnswerCount.value
+  }
+})
 
 const user = computed(() => authStore.user)
 const userRole = computed(() => {
@@ -183,6 +202,22 @@ const markAllAsRead = async () => {
   }
 }
 
+// 导航到个人中心
+const navigateToProfile = () => {
+  router.push('/profile')
+}
+
+// 更新新回答计数
+const updateNewAnswerCount = (count) => {
+  newAnswerCount.value = count
+}
+
+// 处理待回答问题点击
+const handleUnansweredQuestionsClick = () => {
+  // 跳转到问答社区页面并进入教师回答问题模式
+  router.push('/questions?teacherMode=true')
+}
+
 // 处理退出登录
 const handleLogout = async () => {
   try {
@@ -198,6 +233,26 @@ const handleLogout = async () => {
     // 用户取消操作
   }
 }
+
+// 暴露更新方法给其他组件使用
+defineExpose({
+  updateNewAnswerCount
+})
+
+// 监听新回答计数变化事件
+const handleNewAnswerCountUpdate = (count) => {
+  newAnswerCount.value = count
+}
+
+// 组件挂载时监听事件
+onMounted(() => {
+  eventBus.on('updateNewAnswerCount', handleNewAnswerCountUpdate)
+})
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  eventBus.off('updateNewAnswerCount', handleNewAnswerCountUpdate)
+})
 
 // 获取教师待回答问题数量
 const unansweredQuestionsCount = ref(0)

@@ -15,17 +15,21 @@
           size="large"
           class="form-content"
         >
-          <!-- 身份选择 -->
+          <!-- 身份选择（锁定为学生） -->
           <el-form-item prop="role">
-            <el-select
+            <el-input
               v-model="registerForm.role"
-              placeholder="请选择身份"
+              placeholder="学生"
+              disabled
               style="width: 100%"
             >
-              <el-option label="学生" value="1" />
-              <el-option label="教师" value="2" />
-              <el-option label="管理员" value="3" />
-            </el-select>
+              <template #prefix>
+                <el-icon><User /></el-icon>
+              </template>
+            </el-input>
+            <div style="font-size: 12px; color: #909399; margin-top: 8px;">
+              默认身份为学生，如需其他身份请联系管理员
+            </div>
           </el-form-item>
 
           <!-- 基础信息 -->
@@ -157,7 +161,7 @@ const registerFormRef = ref()
 const loading = ref(false)
 
 const registerForm = reactive({
-  role: '1', // 1:学生, 2:教师, 3:管理员
+  role: 'student', // 锁定为学生
   username: '',
   email: '',
   phonenumber: '',
@@ -169,7 +173,7 @@ const registerForm = reactive({
 // 验证规则
 const registerRules = computed(() => ({
   role: [
-    { required: true, message: '请选择身份', trigger: 'change' }
+    { required: true, message: '身份为必填项', trigger: 'blur' }
   ],
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },

@@ -69,11 +69,12 @@
                   上传资源
                 </el-button>
                 <el-button 
+                  v-if="isTeacher && (activeTab === 'my' || isMyCourse(course))"
                   type="success" 
                   size="small" 
-                  @click="askQuestion(course)"
+                  @click="setPermission(course)"
                 >
-                  提出问题
+                  权限设置
                 </el-button>
               </div>
             </div>
@@ -103,6 +104,46 @@
         </el-button>
       </el-empty>
     </div>
+
+    <!-- 权限设置对话框 -->
+    <el-dialog
+      v-model="permissionDialogVisible"
+      title="课程权限设置"
+      width="500px"
+      :before-close="handlePermissionDialogClose"
+    >
+      <div class="permission-dialog">
+        <div class="course-info">
+          <h4>{{ selectedCourse?.title }}</h4>
+          <p>课程所属：{{ selectedCourse?.college }}</p>
+        </div>
+        
+        <div class="permission-options">
+          <el-radio-group v-model="selectedPermission">
+            <el-radio label="private" size="large">仅对本班可见</el-radio>
+            <el-radio label="public" size="large">全部学生可见</el-radio>
+          </el-radio-group>
+        </div>
+        
+        <div class="permission-tips">
+          <p>• 仅对本班可见：只有本班学生可以查看该课程的资源</p>
+          <p>• 全部学生可见：所有学生都可以查看该课程的资源</p>
+        </div>
+      </div>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="handlePermissionDialogClose">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="savePermission"
+            :loading="savingPermission"
+          >
+            保存设置
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -131,6 +172,12 @@ const courses = ref([])
 
 // 选项卡状态
 const activeTab = ref('all')
+
+// 权限设置相关变量
+const permissionDialogVisible = ref(false)
+const selectedCourse = ref(null)
+const selectedPermission = ref('public')
+const savingPermission = ref(false)
 
 // 计算属性：判断用户是否为老师
 const isTeacher = computed(() => {
@@ -162,16 +209,76 @@ const uploadResource = (course) => {
   })
 }
 
-// 提出问题
-const askQuestion = (course) => {
-  // 跳转到提问页面，并传递课程信息
-  router.push({
-    path: '/questions/ask',
-    query: {
-      courseId: course.id,
-      courseTitle: course.title
+// 判断课程是否属于当前教师
+const isMyCourse = (course) => {
+  const currentUserName = authStore.userInfo?.name || authStore.userInfo?.username || authStore.userName
+  return course.instructor?.name === currentUserName
+}
+
+// 权限设置
+const setPermission = (course) => {
+  selectedCourse.value = course
+  selectedPermission.value = 'public' // 默认设置为全部可见
+  permissionDialogVisible.value = true
+}
+
+// 保存权限设置
+const savePermission = async () => {
+  if (!selectedCourse.value) return
+  
+  savingPermission.value = true
+  
+  try {
+    const courseTitle = selectedCourse.value.title
+    let apiUrl = ''
+    
+    if (selectedPermission.value === 'private') {
+      // 设置资源不公开 - 课程名作为URL路径参数
+      apiUrl = `/api/v1/resource/setPrivate/${encodeURIComponent(courseTitle)}`
+    } else {
+      // 设置资源公开 - 课程名作为URL路径参数
+      apiUrl = `/api/v1/resource/setPublic/${encodeURIComponent(courseTitle)}`
     }
-  })
+    
+    console.log('发送权限设置请求:')
+    console.log('课程名:', courseTitle)
+    console.log('编码后课程名:', encodeURIComponent(courseTitle))
+    console.log('API URL:', apiUrl)
+    console.log('权限设置:', selectedPermission.value)
+    
+    // 调用后端API，课程名通过URL路径传递
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error('设置权限失败')
+    }
+    
+    const result = await response.json()
+    if (result.code === 1) {
+      ElMessage.success(`课程"${courseTitle}"权限设置成功！`)
+      permissionDialogVisible.value = false
+    } else {
+      ElMessage.error(result.msg || '权限设置失败')
+    }
+  } catch (error) {
+    console.error('权限设置失败:', error)
+    ElMessage.error('权限设置失败，请稍后重试')
+  } finally {
+    savingPermission.value = false
+  }
+}
+
+// 关闭权限设置对话框
+const handlePermissionDialogClose = () => {
+  permissionDialogVisible.value = false
+  selectedCourse.value = null
+  selectedPermission.value = 'public'
 }
 
 // 选项卡切换处理
@@ -678,5 +785,64 @@ onMounted(() => {
   .course-actions {
     flex-direction: column;
   }
+}
+
+/* 权限设置对话框样式 */
+.permission-dialog {
+  padding: 0 20px;
+}
+
+.permission-dialog .course-info {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.permission-dialog .course-info h4 {
+  font-size: 16px;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.permission-dialog .course-info p {
+  font-size: 14px;
+  color: #606266;
+  margin: 0;
+}
+
+.permission-options {
+  margin-bottom: 20px;
+}
+
+.permission-options .el-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.permission-options .el-radio {
+  margin-right: 0;
+}
+
+.permission-tips {
+  background-color: #f5f7fa;
+  padding: 12px 16px;
+  border-radius: 4px;
+  border-left: 3px solid #409eff;
+}
+
+.permission-tips p {
+  font-size: 13px;
+  color: #606266;
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.permission-tips p:first-child {
+  margin-top: 0;
+}
+
+.permission-tips p:last-child {
+  margin-bottom: 0;
 }
 </style>

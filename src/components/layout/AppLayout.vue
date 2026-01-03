@@ -19,7 +19,7 @@
         
         <!-- 面包屑 -->
         <el-breadcrumb class="breadcrumb" separator="/" v-if="showBreadcrumb">
-          <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+          <el-breadcrumb-item :to="{ path: '/home' }">首页</el-breadcrumb-item>
           <el-breadcrumb-item 
             v-for="item in breadcrumbItems" 
             :key="item.path"
