@@ -267,15 +267,28 @@ const handleRegister = async () => {
 <style scoped>
 .register-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: url('@/views/image/USST .jpg') center/cover no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  position: relative;
+}
+
+.register-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  z-index: 1;
 }
 
 .register-box {
-  background: white;
+  background: rgba(255, 255, 255, 0.9);
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -283,6 +296,8 @@ const handleRegister = async () => {
   max-width: 90vw;
   min-height: 600px;
   overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 
 .register-form {
@@ -327,6 +342,20 @@ const handleRegister = async () => {
   width: 100%;
   height: 48px;
   font-size: 16px;
+  background: linear-gradient(135deg, #C8A2C8 0%, #D8BFD8 100%);
+  border: none;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.register-btn:hover {
+  background: linear-gradient(135deg, #BA8FBA 0%, #C8A2C8 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(200, 162, 200, 0.4);
+}
+
+.register-btn:active {
+  transform: translateY(0);
 }
 
 .form-footer {
@@ -339,9 +368,17 @@ const handleRegister = async () => {
   margin: 0;
 }
 
+:deep(.el-link--primary) {
+  color: #C8A2C8 !important;
+}
+
+:deep(.el-link--primary:hover) {
+  color: #BA8FBA !important;
+}
+
 .welcome-section {
   flex: 1;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #C8A2C8 0%, #D8BFD8 100%);
   color: white;
   padding: 60px 40px;
   display: flex;
