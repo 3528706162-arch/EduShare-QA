@@ -583,13 +583,8 @@ const updatePagination = () => {
 
 // 加载问题时使用前端分页
 const loadQuestions = async () => {
-  // 如果有搜索条件，重新加载所有数据
-  if (searchKeyword.value || selectedCourse.value || selectedTeacher.value) {
-    await loadAllQuestions()
-  } else {
-    // 如果没有搜索条件，直接使用前端分页
-    updatePagination()
-  }
+  // 无论是否有搜索条件，都重新加载数据以保持数据最新
+  await loadAllQuestions()
 }
 
 const handleSearch = () => {
