@@ -69,6 +69,15 @@
                   上传资源
                 </el-button>
                 <el-button 
+                  v-if="!isTeacher"
+                  type="warning" 
+                  size="small" 
+                  @click="askQuestion(course)"
+                >
+                  <el-icon><ChatDotRound /></el-icon>
+                  提问
+                </el-button>
+                <el-button 
                   v-if="isTeacher && (activeTab === 'my' || isMyCourse(course))"
                   type="success" 
                   size="small" 
@@ -154,7 +163,7 @@ import { ElMessage } from 'element-plus'
 import apiService from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { 
-  Upload, VideoPlay, Clock, User, School 
+  Upload, VideoPlay, Clock, User, School, ChatDotRound 
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -205,6 +214,18 @@ const uploadResource = (course) => {
     query: {
       courseId: course.id,
       courseTitle: course.title
+    }
+  })
+}
+
+// 提问功能（学生端）
+const askQuestion = (course) => {
+  // 跳转到提问页面，并自动选择课程
+  router.push({
+    path: '/questions/ask',
+    query: {
+      courseName: course.title,
+      courseId: course.id
     }
   })
 }

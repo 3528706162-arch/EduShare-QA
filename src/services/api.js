@@ -1,4 +1,5 @@
 // API服务模块 - 统一管理所有HTTP请求
+import { useAuthStore } from '@/stores/auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -6,7 +7,24 @@ class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL
   }
-//666
+
+  // 处理401错误 - 跳转到登录页面
+  handleUnauthorized() {
+    const authStore = useAuthStore()
+    // 清除本地存储的token和用户信息
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    // 重置store状态
+    authStore.token = null
+    authStore.user = null
+    // 跳转到登录页面
+    window.location.href = '/login'
+    // 显示错误提示
+    if (typeof ElMessage !== 'undefined') {
+      ElMessage.error('登录已过期，请重新登录')
+    }
+  }
+
   // 通用请求方法
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`
@@ -26,6 +44,12 @@ class ApiService {
 
     try {
       const response = await fetch(url, config)
+      
+      // 处理401未授权错误
+      if (response.status === 401) {
+        this.handleUnauthorized()
+        return { success: false, error: '未授权访问，请重新登录' }
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

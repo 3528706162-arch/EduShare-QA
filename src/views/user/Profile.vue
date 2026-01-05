@@ -1624,6 +1624,7 @@ const isQuestionControlled = (questionId) => {
      
      // 按顺序加载数据
      await loadUserInfo()
+     await loadCourses() // 加载课程数据，用于我的提问和我的资源部分
      await loadUserQuestions()
      await loadUserResources()
      await loadUserAnswers()
@@ -2410,13 +2411,18 @@ const isQuestionControlled = (questionId) => {
      
      if (response.success && response.data?.code === 1) {
        userResources.value = response.data.data || []
+       if (userResources.value.length === 0) {
+         ElMessage.info('您还没有上传任何资源')
+       }
      } else {
-       console.warn('加载我的资源失败，使用默认数据')
-       // 保持默认的模拟数据
+       console.warn('加载我的资源失败，使用空数组')
+       userResources.value = []
+       ElMessage.warning('加载资源失败，请稍后重试')
      }
    } catch (error) {
      console.error('加载我的资源失败:', error)
-     // 保持默认的模拟数据
+     userResources.value = []
+     ElMessage.error('网络错误，加载资源失败')
    } finally {
      loadingResources.value = false
    }
@@ -2614,45 +2620,49 @@ const isQuestionControlled = (questionId) => {
  const loadCourses = async () => {
    loadingCourses.value = true
    try {
+     console.log('开始加载课程分类数据...')
      const response = await apiService.courses.list()
+     
+     console.log('课程API响应:', response)
+     
+     // 根据实际响应格式调整数据提取逻辑，参考ResourceList.vue的实现
      if (response.success && response.data?.code === 1) {
-       // 将课程数据转换为分类选项格式
-       const realCourses = (response.data.data || []).map(course => ({
-         id: course.id,
-         name: course.title
-       }))
-       resourceCategories.value = realCourses
-       questionCourses.value = realCourses // 同时更新提问的课程列表
+       const courseData = response.data.data || response.data
+       console.log('课程数据:', courseData)
+       
+       if (courseData && Array.isArray(courseData) && courseData.length > 0) {
+         // 从课程数据中提取课程名称作为分类选项
+         const uniqueCourses = [...new Set(courseData.map(course => course.title || course.courseName || course.name || '未知课程'))]
+         console.log('提取的唯一课程名称:', uniqueCourses)
+         
+         if (uniqueCourses.length > 0) {
+           const realCourses = uniqueCourses.map((name, index) => ({
+             id: index + 1,
+             name: name
+           }))
+           resourceCategories.value = realCourses
+           questionCourses.value = realCourses // 同时更新提问的课程列表
+           console.log('课程分类数据加载成功:', realCourses)
+         } else {
+           console.warn('课程数据为空，使用空数组')
+           resourceCategories.value = []
+           questionCourses.value = []
+         }
+       } else {
+         console.warn('课程数据格式错误，使用空数组')
+         resourceCategories.value = []
+         questionCourses.value = []
+       }
      } else {
-       // 如果API调用失败，使用默认的课程列表
-       const defaultCourses = [
-         { id: 1, name: '高等数学' },
-         { id: 2, name: '线性代数' },
-         { id: 3, name: '概率论与数理统计' },
-         { id: 4, name: '大学物理' },
-         { id: 5, name: 'C语言程序设计' },
-         { id: 6, name: '数据结构' },
-         { id: 7, name: '操作系统' },
-         { id: 8, name: '计算机网络' }
-       ]
-       resourceCategories.value = defaultCourses
-       questionCourses.value = defaultCourses // 同时更新提问的课程列表
+       console.warn('获取课程数据失败，响应格式不符，使用空数组')
+       console.log('响应数据:', response)
+       resourceCategories.value = []
+       questionCourses.value = []
      }
    } catch (error) {
-     console.error('加载课程数据失败:', error)
-     // 使用默认的课程列表
-     const defaultCourses = [
-       { id: 1, name: '高等数学' },
-       { id: 2, name: '线性代数' },
-       { id: 3, name: '概率论与数理统计' },
-       { id: 4, name: '大学物理' },
-       { id: 5, name: 'C语言程序设计' },
-       { id: 6, name: '数据结构' },
-       { id: 7, name: '操作系统' },
-       { id: 8, name: '计算机网络' }
-     ]
-     resourceCategories.value = defaultCourses
-     questionCourses.value = defaultCourses // 同时更新提问的课程列表
+     console.error('加载课程分类失败:', error)
+     resourceCategories.value = []
+     questionCourses.value = []
    } finally {
      loadingCourses.value = false
    }

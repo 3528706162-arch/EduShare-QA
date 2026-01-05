@@ -7,6 +7,7 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 import App from './App.vue'
 import router from './router'
+import requestInterceptor from '@/utils/requestInterceptor'
 
 // 创建Vue应用
 const app = createApp(App)
@@ -23,6 +24,9 @@ app.use(ElementPlus, {
   locale: zhCn,
   size: 'default'
 })
+
+// 安装全局请求拦截器
+requestInterceptor.install()
 
 // 全局配置
 app.config.globalProperties.$filters = {

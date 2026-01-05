@@ -13,7 +13,7 @@ const routes = [
     component: () => import('@/views/Home.vue'),
     meta: { 
       title: '首页', 
-      requiresAuth: false,
+      requiresAuth: true,
       showSidebar: true,
       showBreadcrumb: false
     }
@@ -246,12 +246,14 @@ router.beforeEach((to, from, next) => {
   
   // 检查是否需要认证
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    console.log('路由守卫: 用户未认证，跳转到登录页')
     next('/login')
     return
   }
   
   // 检查角色权限
   if (to.meta.roles && !to.meta.roles.includes(authStore.userRole)) {
+    console.log('路由守卫: 用户权限不足，跳转到首页')
     // 如果没有权限，跳转到首页并显示提示
     if (from.path !== '/home') {
       next('/home')
@@ -266,6 +268,7 @@ router.beforeEach((to, from, next) => {
     document.title = `${to.meta.title} - EduShare QA`
   }
   
+  console.log('路由守卫: 允许访问', to.path)
   next()
 })
 

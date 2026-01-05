@@ -35,12 +35,13 @@ export const useAuthStore = defineStore('auth', () => {
       const result = await response.json()
       
       if (result.code === 1) {
-        token.value = result.data.id
-        user.value = result.data
-        localStorage.setItem('token', result.data.id)
-        localStorage.setItem('user', JSON.stringify(result.data))
+        // 根据新的响应格式，token在result.data.token中
+        token.value = result.data.token
+        user.value = result.data.user
+        localStorage.setItem('token', result.data.token)
+        localStorage.setItem('user', JSON.stringify(result.data.user))
         
-        return { success: true, user: result.data }
+        return { success: true, user: result.data.user }
       } else {
         throw new Error(result.msg || '登录失败')
       }
@@ -84,8 +85,14 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     
-    // 跳转到登录页面
-    router.push('/login')
+    // 立即跳转到登录页面
+    if (window.location.pathname !== '/login') {
+      // 使用replace而不是push，避免用户通过浏览器返回按钮回到已退出登录的页面
+      router.replace('/login').catch(() => {
+        // 如果路由跳转失败，直接使用window.location
+        window.location.href = '/login'
+      })
+    }
   }
   
   const checkAuthStatus = () => {

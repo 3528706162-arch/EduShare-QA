@@ -166,13 +166,13 @@ const handleLogin = async () => {
     if (result.code === 1) {
       ElMessage.success(result.msg || '登录成功')
       
-      // 保存用户信息到本地存储
-      localStorage.setItem('token', result.data.id)
-      localStorage.setItem('user', JSON.stringify(result.data))
+      // 根据新的响应格式，token在result.data.token中，用户信息在result.data.user中
+      localStorage.setItem('token', result.data.token)
+      localStorage.setItem('user', JSON.stringify(result.data.user))
       
       // 更新auth store状态
-      authStore.token = result.data.id
-      authStore.user = result.data
+      authStore.token = result.data.token
+      authStore.user = result.data.user
       
       // 所有用户登录成功后都跳转到主页
       router.push('/home')

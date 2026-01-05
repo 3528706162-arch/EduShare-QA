@@ -513,9 +513,11 @@ onMounted(() => {
   loadCourses() // 加载课程列表
   
   // 检查URL参数，如果有课程信息则自动填充
-  if (route.query.courseTitle) {
-    form.classBelong = route.query.courseTitle
-    ElMessage.success(`已自动选择课程: ${route.query.courseTitle}`)
+  // 支持从课程中心传递的courseName参数和courseTitle参数
+  const courseName = route.query.courseName || route.query.courseTitle
+  if (courseName) {
+    form.classBelong = courseName
+    ElMessage.success(`已自动选择课程: ${courseName}`)
   }
 })
 </script>

@@ -43,25 +43,39 @@
 
     <!-- 搜索和筛选区域 -->
     <div class="search-filter">
-      <el-row :gutter="20">
-        <el-col :span="12">
+      <el-row :gutter="10">
+        <el-col :span="6">
           <el-input
             v-model="searchKeyword"
-            placeholder="搜索问题..."
+            placeholder="搜索问题标题..."
             prefix-icon="Search"
             clearable
-            @input="handleSearch"
           />
         </el-col>
         <el-col :span="6">
-          <el-select v-model="filterStatus" placeholder="筛选状态" clearable @change="handleFilter">
-            <el-option label="全部" value=""></el-option>
-            <el-option label="已解决" value="solved"></el-option>
-            <el-option label="未解决" value="unsolved"></el-option>
-            <el-option label="热门" value="hot"></el-option>
+          <el-select v-model="selectedCourse" placeholder="选择课程" clearable>
+            <el-option label="全部课程" value=""></el-option>
+            <el-option 
+              v-for="course in courseOptions" 
+              :key="course.value" 
+              :label="course.label" 
+              :value="course.value"
+            />
           </el-select>
         </el-col>
         <el-col :span="6">
+          <el-select v-model="selectedTeacher" placeholder="选择教师" clearable>
+            <el-option label="全部教师" value=""></el-option>
+            <el-option 
+              v-for="teacher in teacherOptions" 
+              :key="teacher.value" 
+              :label="teacher.label" 
+              :value="teacher.value"
+            />
+          </el-select>
+        </el-col>
+        <el-col :span="6">
+          <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
         </el-col>
       </el-row>
     </div>
@@ -255,7 +269,7 @@
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
-        :page-sizes="[10, 20, 30, 50]"
+        :page-sizes="[2, 10, 20, 30, 50]"
         :total="total"
         layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSizeChange"
@@ -283,6 +297,12 @@ const filterStatus = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const loading = ref(false)
+
+// 新增搜索相关变量
+const selectedCourse = ref('')
+const selectedTeacher = ref('')
+const courseOptions = ref([])
+const teacherOptions = ref([])
 
 // 教师相关变量
 const isTeacher = computed(() => authStore.userRole === 'teacher')
@@ -333,6 +353,116 @@ const isQuestionControlled = (questionId) => {
   }
 }
 
+// 加载课程选项
+const loadCourseOptions = async () => {
+  try {
+    const response = await fetch('/api/v1/class/findall')
+    const result = await response.json()
+    
+    if (result.code === 1 && result.data) {
+      // 尝试多种可能的字段名来获取课程名称
+      courseOptions.value = result.data.map(course => ({
+        label: course.title || course.courseName || course.name || '未知课程',
+        value: course.title || course.courseName || course.name || ''
+      }))
+      console.log('课程选项加载成功:', courseOptions.value)
+    } else {
+      console.warn('获取课程列表失败:', result.msg)
+      // 如果API失败，尝试从其他来源获取课程数据
+      await tryAlternativeCourseSources()
+    }
+  } catch (error) {
+    console.error('加载课程选项失败:', error)
+    // 尝试从其他来源获取课程数据
+    await tryAlternativeCourseSources()
+  }
+}
+
+// 从其他来源尝试获取课程数据
+const tryAlternativeCourseSources = async () => {
+  try {
+    // 尝试使用apiService获取课程数据
+    const response = await apiService.courses.list()
+    
+    if (response.success && response.data?.code === 1) {
+      courseOptions.value = response.data.data.map(course => ({
+        label: course.title || course.courseName || course.name || '未知课程',
+        value: course.title || course.courseName || course.name || ''
+      }))
+      console.log('从apiService获取课程选项成功:', courseOptions.value)
+    } else {
+      // 如果所有API都失败，使用空数组而不是模拟数据
+      courseOptions.value = []
+      console.warn('所有课程数据源都失败，使用空数组')
+    }
+  } catch (error) {
+    console.error('尝试其他课程数据源失败:', error)
+    // 使用空数组而不是模拟数据
+    courseOptions.value = []
+  }
+}
+
+// 加载教师选项
+const loadTeacherOptions = async () => {
+  try {
+    const response = await fetch('/api/v1/teacher/findall')
+    const result = await response.json()
+    
+    if (result.code === 1 && result.data) {
+      // 尝试多种可能的字段名来获取教师名称
+      teacherOptions.value = result.data.map(teacher => ({
+        label: teacher.name || teacher.teacherName || '未知教师',
+        value: teacher.name || teacher.teacherName || ''
+      }))
+      console.log('教师选项加载成功:', teacherOptions.value)
+    } else {
+      console.warn('获取教师列表失败:', result.msg)
+      // 如果API失败，尝试从其他来源获取教师数据
+      await tryAlternativeTeacherSources()
+    }
+  } catch (error) {
+    console.error('加载教师选项失败:', error)
+    // 尝试从其他来源获取教师数据
+    await tryAlternativeTeacherSources()
+  }
+}
+
+// 从其他来源尝试获取教师数据
+const tryAlternativeTeacherSources = async () => {
+  try {
+    // 尝试从课程数据中提取教师信息
+    const response = await fetch('/api/v1/course/getAllCourse')
+    const result = await response.json()
+    
+    if (result.code === 1 && result.data) {
+      // 从课程数据中提取教师名称
+      const teacherNames = new Set()
+      result.data.forEach(course => {
+        if (course.teacherName) {
+          teacherNames.add(course.teacherName)
+        }
+        if (course.teacher) {
+          teacherNames.add(course.teacher)
+        }
+      })
+      
+      teacherOptions.value = Array.from(teacherNames).map(name => ({
+        label: name,
+        value: name
+      }))
+      console.log('从课程数据中提取教师选项成功:', teacherOptions.value)
+    } else {
+      // 如果所有API都失败，使用空数组而不是模拟数据
+      teacherOptions.value = []
+      console.warn('所有教师数据源都失败，使用空数组')
+    }
+  } catch (error) {
+    console.error('尝试其他教师数据源失败:', error)
+    // 使用空数组而不是模拟数据
+    teacherOptions.value = []
+  }
+}
+
 // 通过API获取用户名并更新响应式数据
 const fetchUserName = async (userId) => {
   if (!userId) return
@@ -379,29 +509,86 @@ const getUserName = (userId) => {
   return userNames.value[userId] || '加载中...'
 }
 
-// 加载问题时预加载用户名
-const loadQuestions = async () => {
+// 所有问题数据缓存
+const allQuestions = ref([])
+
+// 一次性加载所有问题数据
+const loadAllQuestions = async () => {
   loading.value = true
   try {
-    await questionsStore.fetchQuestions({
-      page: currentPage.value,
-      limit: pageSize.value,
-      search: searchKeyword.value,
-      status: filterStatus.value
+    // 构建请求体，不传分页参数，获取所有数据
+    const requestBody = {
+      title: searchKeyword.value,
+      classBelong: selectedCourse.value,
+      teacherName: selectedTeacher.value
+    }
+    
+    // 使用新的POST接口获取所有数据
+    const response = await fetch('/api/v1/question/findQuestionByQuestionResearchParam', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
     })
     
-    // 预加载所有问题的用户名
-    if (questions.value && questions.value.length > 0) {
-      questions.value.forEach(question => {
-        if (question.authorId) {
-          fetchUserName(question.authorId)
-        }
-      })
+    const result = await response.json()
+    
+    if (result.code === 1 && result.data) {
+      // 缓存所有问题数据
+      allQuestions.value = Array.isArray(result.data) ? result.data : []
+      
+      // 更新分页显示
+      updatePagination()
+      
+      // 预加载所有问题的用户名
+      if (allQuestions.value.length > 0) {
+        allQuestions.value.forEach(question => {
+          if (question.authorId) {
+            fetchUserName(question.authorId)
+          }
+        })
+      }
+      
+      ElMessage.success(`成功加载 ${allQuestions.value.length} 条问题数据`)
+    } else {
+      console.warn('获取问题列表失败:', result.msg)
+      allQuestions.value = []
+      updatePagination()
     }
   } catch (error) {
     console.error('加载问题列表失败:', error)
+    allQuestions.value = []
+    updatePagination()
   } finally {
     loading.value = false
+  }
+}
+
+// 更新分页显示
+const updatePagination = () => {
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  
+  // 前端分页：截取当前页的数据
+  questionsStore.questions = allQuestions.value.slice(startIndex, endIndex)
+  
+  // 更新分页信息
+  questionsStore.pagination = {
+    current: currentPage.value,
+    pageSize: pageSize.value,
+    total: allQuestions.value.length
+  }
+}
+
+// 加载问题时使用前端分页
+const loadQuestions = async () => {
+  // 如果有搜索条件，重新加载所有数据
+  if (searchKeyword.value || selectedCourse.value || selectedTeacher.value) {
+    await loadAllQuestions()
+  } else {
+    // 如果没有搜索条件，直接使用前端分页
+    updatePagination()
   }
 }
 
@@ -410,19 +597,16 @@ const handleSearch = () => {
   loadQuestions()
 }
 
-const handleFilter = () => {
-  currentPage.value = 1
-  loadQuestions()
-}
-
+// 移除handleFilter方法，统一使用handleSearch
 const handleSizeChange = (size) => {
   pageSize.value = size
-  loadQuestions()
+  currentPage.value = 1
+  updatePagination()
 }
 
 const handleCurrentChange = (page) => {
   currentPage.value = page
-  loadQuestions()
+  updatePagination()
 }
 
 const askQuestion = () => {
@@ -711,7 +895,11 @@ const submitAnswer = async (questionId) => {
 }
 
 onMounted(() => {
-  loadQuestions()
+  // 使用前端分页，一次性加载所有数据
+  loadAllQuestions()
+  // 加载课程和教师选项
+  loadCourseOptions()
+  loadTeacherOptions()
   // 检查URL参数并自动进入教师模式
   checkUrlParams()
 })
